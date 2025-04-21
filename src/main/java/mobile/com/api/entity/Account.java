@@ -32,7 +32,22 @@ public class Account {
     @Column(columnDefinition = "BOOLEAN DEFAULT TRUE")
     private boolean sex=true;
 
-   
+    /**
+	 * @return the duongDanAnh
+	 */
+	public String getDuongDanAnh() {
+		return duongDanAnh;
+	}
+
+	/**
+	 * @param duongDanAnh the duongDanAnh to set
+	 */
+	public void setDuongDanAnh(String duongDanAnh) {
+		this.duongDanAnh = duongDanAnh;
+	}
+
+	@Column(name = "duong_dan_anh", length = 255)
+    private String duongDanAnh="hehehhe";
 
 	/**
 	 * @return the diachi

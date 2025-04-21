@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
@@ -67,7 +68,26 @@ public class account_controller {
             "sinhnhat", sinhnhatStr
         ));
     }
-
+    @PostMapping(value = "/signup", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> signup(@RequestBody SignupRequest request) {
+        try {
+        	Account existingAccount = accountService.findByGmail(request.getGmail());
+            if (existingAccount != null) {
+                return ResponseEntity.status(404).body(Map.of(
+                    "message", "đã có tài khoản với Gmail: " + request.getGmail()
+                ));
+            }
+            Account newAccount = accountService.signup(request);
+            return ResponseEntity.ok(Map.of(
+                "id", newAccount.getId(),
+                "gmail", newAccount.getGmail(),
+                "role", newAccount.getRole().name(),
+                "message", "Đăng ký thành công"
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        }
+    }
     @PostMapping(value = "/them", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, String>> themSanPham(
             @RequestBody SanPhamRequest request,
@@ -203,6 +223,148 @@ public class account_controller {
         } catch (Exception e) {
             return ResponseEntity.status(400).body(Map.of(
                 "message", "Đã xảy ra lỗi: " + e.getMessage()
+            ));
+        }
+    }
+    @PostMapping(value = "/updateaccount", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> updateacc(@RequestBody LoginRequest request) {
+    	try {
+            // Kiểm tra xem Gmail có tồn tại không
+            Account existingAccount = accountService.findByGmail(request.getGmail());
+            if (existingAccount == null) {
+                return ResponseEntity.status(404).body(Map.of(
+                    "message", "Không tìm thấy tài khoản với Gmail: " + request.getGmail()
+                ));
+            }
+
+            // Cập nhật mật khẩu mới
+            accountService.updateacc(request);
+            Account updatedAccount = accountService.findByGmail(request.getGmail());
+            String sinhnhatStr = updatedAccount.getSinhnhat() != null
+                    ? new SimpleDateFormat("yyyy-MM-dd").format(updatedAccount.getSinhnhat())
+                    : "N/A";
+
+            return ResponseEntity.ok(Map.of(
+                "id", existingAccount.getId(),
+                "gmail", existingAccount.getGmail(),
+                "role", existingAccount.getRole().name(),
+                "hoten", existingAccount.getHoTen(),
+                "gioitinh", existingAccount.isSex(),
+                "sinhnhat", existingAccount.getSinhnhat(),  
+                "diachi", existingAccount.getDiachi(),
+                "message", "Cập nhật thông tin tài khoản thành công"
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        }
+    }
+ // API mới để upload ảnh đại diện
+    @PostMapping(value = "/uploadprofilepic", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadProfilePicture(
+            @RequestParam("gmail") String gmail,
+            @RequestParam("file") MultipartFile file,
+            HttpServletRequest httpRequest) {
+        try {
+            // Kiểm tra tài khoản
+            Account existingAccount = accountService.findByGmail(gmail);
+            if (existingAccount == null) {
+                logger.error("Không tìm thấy tài khoản với Gmail: {}", gmail);
+                return ResponseEntity.status(404).body(Map.of(
+                    "message", "Không tìm thấy tài khoản với Gmail: " + gmail
+                ));
+            }
+
+            // Kiểm tra file
+            if (file.isEmpty()) {
+                logger.error("File ảnh không được để trống cho Gmail: {}", gmail);
+                return ResponseEntity.status(400).body(Map.of(
+                    "message", "File ảnh không được để trống"
+                ));
+            }
+
+            // Lưu file ảnh
+            String fileName = "profile_" + gmail.replace("@", "_") + "_" + System.currentTimeMillis() + ".jpg";
+            String uploadDir = servletContext.getRealPath("/uploads/"); // Sửa chữ hoa thành chữ thường
+            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+
+            logger.info("Đường dẫn lưu ảnh: {}", uploadPath.toString());
+
+            if (!Files.exists(uploadPath)) {
+                logger.info("Tạo thư mục: {}", uploadPath.toString());
+                Files.createDirectories(uploadPath);
+            }
+
+            // Kiểm tra quyền ghi
+            if (!Files.isWritable(uploadPath)) {
+                logger.error("Không có quyền ghi vào thư mục: {}", uploadPath.toString());
+                return ResponseEntity.status(500).body(Map.of(
+                    "message", "Không có quyền ghi vào thư mục: " + uploadPath.toString()
+                ));
+            }
+
+            Path filePath = uploadPath.resolve(fileName);
+            logger.info("Ghi file vào: {}", filePath.toString());
+            Files.write(filePath, file.getBytes());
+
+            // Cập nhật đường dẫn ảnh trong database
+            String duongDanAnh = "/uploads/" + fileName; // Sửa chữ hoa thành chữ thường
+            logger.info("Cập nhật đường dẫn ảnh vào DB: {}", duongDanAnh);
+            accountService.updateProfilePicture(gmail, duongDanAnh);
+
+            // Lấy tài khoản đã cập nhật
+            Account updatedAccount = accountService.findByGmail(gmail);
+            if (updatedAccount.getDuongDanAnh() == null || !updatedAccount.getDuongDanAnh().equals(duongDanAnh)) {
+                logger.error("Đường dẫn ảnh không được cập nhật vào DB cho Gmail: {}", gmail);
+            } else {
+                logger.info("Đường dẫn ảnh đã được cập nhật vào DB: {}", updatedAccount.getDuongDanAnh());
+            }
+
+            String sinhnhatStr = updatedAccount.getSinhnhat() != null
+                    ? new SimpleDateFormat("yyyy-MM-dd").format(updatedAccount.getSinhnhat())
+                    : "N/A";
+
+            return ResponseEntity.ok(Map.of(
+                "id", updatedAccount.getId(),
+                "gmail", updatedAccount.getGmail(),
+                "role", updatedAccount.getRole().name(),
+                "hoten", updatedAccount.getHoTen(),
+                "gioitinh", updatedAccount.isSex(),
+                "sinhnhat", sinhnhatStr,
+                "diachi", updatedAccount.getDiachi(),
+                "duongDanAnh", updatedAccount.getDuongDanAnh(),
+                "message", "Cập nhật ảnh đại diện thành công"
+            ));
+        } catch (Exception e) {
+            logger.error("Lỗi khi upload ảnh đại diện cho: {}", gmail, e);
+            return ResponseEntity.status(500).body(Map.of(
+                "message", "Lỗi khi upload ảnh: " + e.getMessage()
+            ));
+        }
+    }
+ // API để lấy chi tiết sản phẩm theo id
+    @GetMapping(value = "/sanphamchitiet/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> getSanPhamById(@PathVariable("id") Long id) {
+        try {
+            SanPham sanPham = sanPhamService.findByid(id);
+            if (sanPham == null) {
+                return ResponseEntity.status(404).body(Map.of(
+                    "message", "Không tìm thấy sản phẩm với id: " + id
+                ));
+            }
+            SanPhamDTO sanPhamDTO = new SanPhamDTO(
+                sanPham.getId(),
+                sanPham.getLoai().name(),
+                sanPham.getTenSanPham(),
+                sanPham.getMoTa(),
+                sanPham.getGiaTien(),
+                sanPham.getDuongDanAnh(),
+                sanPham.getSoLuong()
+            );
+            return ResponseEntity.ok(sanPhamDTO);
+        } catch (Exception e) {
+            logger.error("Lỗi khi lấy sản phẩm với id: {}", id, e);
+            return ResponseEntity.status(500).body(Map.of(
+                "message", "Lỗi khi lấy sản phẩm: " + e.getMessage()
             ));
         }
     }

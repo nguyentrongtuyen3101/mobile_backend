@@ -30,4 +30,9 @@ public class SanPhamServiceImpl implements SanPhamService {
     public List<SanPham> findByLoai(LoaiSanPham loai) {
         return sanPhamDao.findByLoai(loai);
     }
+    @Override
+    public SanPham findByid(long id)
+    {
+    	return sanPhamDao.findByid(id);
+    }
 }

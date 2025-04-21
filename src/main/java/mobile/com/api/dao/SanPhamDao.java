@@ -1,5 +1,6 @@
 package mobile.com.api.dao;
 
+import mobile.com.api.entity.Account;
 import mobile.com.api.entity.SanPham;
 import mobile.com.api.entity.SanPham.LoaiSanPham;
 
@@ -12,4 +13,5 @@ public interface SanPhamDao {
     // Tìm sản phẩm theo tên
     SanPham findByTenSanPham(String tenSanPham);
     List<SanPham> findByLoai(LoaiSanPham loai); 
+    SanPham findByid(long id);
 }

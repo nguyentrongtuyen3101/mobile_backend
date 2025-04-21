@@ -7,6 +7,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import mobile.com.api.DTO.LoginRequest;
 import mobile.com.api.DTO.SignupRequest;
 import mobile.com.api.dao.account_dao;
 import mobile.com.api.entity.Account;
@@ -81,5 +82,14 @@ public class account_service_imp implements account_service {
 
        return otp; // Trả về OTP để frontend lưu
    }
-
+   @Override
+   public Account updateacc(LoginRequest account)
+   {
+	   return accountDao.updateacc(account);
+   }
+   @Override
+   public void updateProfilePicture(String gmail, String duongDanAnh)
+   {
+	   accountDao.updateProfilePicture(gmail, duongDanAnh);
+   }
 }

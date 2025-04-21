@@ -1,5 +1,6 @@
 package mobile.com.api.dao;
 
+import mobile.com.api.entity.Account;
 import mobile.com.api.entity.SanPham;
 import mobile.com.api.entity.SanPham.LoaiSanPham;
 import org.hibernate.Session;
@@ -40,5 +41,17 @@ public class SanPhamDaoImpl implements SanPhamDao {
         );
         query.setParameter("loai", loai);
         return query.getResultList();
+    }
+    @Override
+    public SanPham findByid(long id)
+    {
+    	try {
+    		Session session = sessionFactory.getCurrentSession();
+            Query<SanPham> query = session.createQuery("FROM SanPham WHERE id = :id", SanPham.class);
+            query.setParameter("id", id);
+            return query.uniqueResult();
+		} catch (Exception e) {
+			 return null;
+		}
     }
 }
