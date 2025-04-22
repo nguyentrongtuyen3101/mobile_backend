@@ -1,6 +1,7 @@
 package mobile.com.api.dao;
 
 import mobile.com.api.entity.Account;
+import mobile.com.api.entity.GioHang;
 import mobile.com.api.entity.SanPham;
 import mobile.com.api.entity.SanPham.LoaiSanPham;
 import org.hibernate.Session;
@@ -54,4 +55,39 @@ public class SanPhamDaoImpl implements SanPhamDao {
 			 return null;
 		}
     }
+    @Override
+    public GioHang  addgiohang(GioHang gioHang)
+    {
+    	Session session = sessionFactory.getCurrentSession();
+         session.saveOrUpdate(gioHang);
+		return gioHang;
+    }
+    @Override
+    public GioHang findGioHangByAccountAndSanPham(Long accountId, Long sanPhamId) {
+        Session session = sessionFactory.getCurrentSession();
+        Query<GioHang> query = session.createQuery(
+            "FROM GioHang WHERE account.id = :accountId AND sanPham.id = :sanPhamId", GioHang.class
+        );
+        query.setParameter("accountId", accountId);
+        query.setParameter("sanPhamId", sanPhamId);
+        return query.uniqueResult();
+    }
+    @Override
+    public List<GioHang> getGioHangByAccount(Long accountId) {
+        Session session = sessionFactory.getCurrentSession();
+        Query<GioHang> query = session.createQuery(
+            "FROM GioHang WHERE account.id = :accountId", GioHang.class
+        );
+        query.setParameter("accountId", accountId);
+        return query.getResultList();
+    }
+    @Override
+    public void deleteGioHang(Long gioHangId) {
+        Session session = sessionFactory.getCurrentSession();
+        GioHang gioHang = session.get(GioHang.class, gioHangId);
+        if (gioHang != null) {
+            session.delete(gioHang);
+        }
+    }
+    
 }

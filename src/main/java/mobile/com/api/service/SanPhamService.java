@@ -1,6 +1,7 @@
 package mobile.com.api.service;
 
 import mobile.com.api.entity.Account;
+import mobile.com.api.entity.GioHang;
 import mobile.com.api.entity.SanPham;
 import mobile.com.api.entity.SanPham.LoaiSanPham;
 
@@ -12,4 +13,7 @@ public interface SanPhamService {
     SanPham findByTenSanPham(String tenSanPham);
     List<SanPham> findByLoai(LoaiSanPham loai); 
     SanPham findByid(long id);
+    GioHang  addgiohang(GioHang gioHang);
+    List<GioHang> getGioHangByAccount(Long accountId);
+    void deleteGioHang(Long gioHangId);
 }

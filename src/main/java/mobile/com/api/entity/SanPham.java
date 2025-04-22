@@ -3,6 +3,8 @@ package mobile.com.api.entity;
 import java.util.List;
 import javax.persistence.*;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Entity
 @Table(name = "san_pham")
 public class SanPham {
@@ -45,9 +47,11 @@ public class SanPham {
    
 
     @OneToMany(mappedBy = "sanPham", cascade = CascadeType.ALL)
+    @JsonIgnore
     private List<GioHang> gioHangs;
 
     @OneToMany(mappedBy = "sanPham", cascade = CascadeType.ALL)
+    @JsonIgnore
     private List<YeuThich> yeuThichs;
 
     // --------------- Getter & Setter ---------------

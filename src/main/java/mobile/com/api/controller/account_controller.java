@@ -1,10 +1,13 @@
 package mobile.com.api.controller;
 
 import mobile.com.api.DTO.SanPhamRequest;
+import mobile.com.api.DTO.GioHangResponseDTO;
 import mobile.com.api.DTO.LoginRequest;
 import mobile.com.api.DTO.SanPhamDTO;
 import mobile.com.api.DTO.SignupRequest;
+import mobile.com.api.DTO.giohangDTO;
 import mobile.com.api.entity.Account;
+import mobile.com.api.entity.GioHang;
 import mobile.com.api.entity.SanPham;
 import mobile.com.api.entity.SanPham.LoaiSanPham;
 import mobile.com.api.service.account_service;
@@ -365,6 +368,79 @@ public class account_controller {
             logger.error("Lỗi khi lấy sản phẩm với id: {}", id, e);
             return ResponseEntity.status(500).body(Map.of(
                 "message", "Lỗi khi lấy sản phẩm: " + e.getMessage()
+            ));
+        }
+    }
+    @PostMapping(value = "/themgiohang", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> addgiohang(@RequestBody giohangDTO request) {
+        try {
+            if (request.getSoLuong() <= 0) {
+                return ResponseEntity.status(400).body(Map.of(
+                    "message", "Số lượng phải lớn hơn 0"
+                ));
+            }
+            Account account = new Account();
+            account.setId(request.getAccountId());
+
+            SanPham sanPham = new SanPham();
+            sanPham.setId(request.getSanPhamId());
+            
+            GioHang gioHang = new GioHang();
+            gioHang.setAccount(account);
+            gioHang.setSanPham(sanPham);
+            gioHang.setSoLuong(request.getSoLuong());
+
+            GioHang newgioHang = sanPhamService.addgiohang(gioHang);
+            if (newgioHang == null) {
+                return ResponseEntity.status(500).body(Map.of(
+                    "message", "Không thể thêm sản phẩm vào giỏ hàng"
+                ));
+            }
+
+            giohangDTO responseDTO = new giohangDTO(
+                newgioHang.getId(),
+                newgioHang.getAccount().getId(),
+                newgioHang.getSanPham().getId(),
+                newgioHang.getSoLuong(),
+                "Thêm vào giỏ hàng thành công"
+            );
+            return ResponseEntity.ok(responseDTO);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(400).body(Map.of(
+                "message", "Lỗi khi thêm vào giỏ hàng: " + e.getMessage()
+            ));
+        }
+    }
+    @GetMapping(value = "/giohang", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> getGioHang(@RequestParam("accountId") Long accountId) {
+        try {
+            List<GioHang> gioHangs = sanPhamService.getGioHangByAccount(accountId);
+            List<GioHangResponseDTO> gioHangDTOs = gioHangs.stream().map(gioHang -> new GioHangResponseDTO(
+                gioHang.getId(),
+                gioHang.getAccount().getId(),
+                gioHang.getSanPham().getId(),
+                gioHang.getSanPham().getTenSanPham(),
+                gioHang.getSanPham().getDuongDanAnh(),
+                gioHang.getSanPham().getGiaTien(),
+                gioHang.getSoLuong()
+            )).collect(Collectors.toList());
+            return ResponseEntity.ok(gioHangDTOs);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of(
+                "message", "Lỗi khi lấy giỏ hàng: " + e.getMessage()
+            ));
+        }
+    }
+    @DeleteMapping(value = "/giohang/{id}")
+    public ResponseEntity<?> deleteGioHang(@PathVariable("id") Long gioHangId) {
+        try {
+            sanPhamService.deleteGioHang(gioHangId);
+            return ResponseEntity.ok(Map.of(
+                "message", "Xóa sản phẩm khỏi giỏ hàng thành công"
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of(
+                "message", "Lỗi khi xóa sản phẩm khỏi giỏ hàng: " + e.getMessage()
             ));
         }
     }
