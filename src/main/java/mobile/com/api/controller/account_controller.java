@@ -15,10 +15,13 @@ import mobile.com.api.service.SanPhamService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import io.jsonwebtoken.Jwts;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
@@ -32,6 +35,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.text.SimpleDateFormat;
+import java.util.Date;
 @RestController
 @RequestMapping("/checkmobile")
 @CrossOrigin(origins = "*")
@@ -48,6 +52,9 @@ public class account_controller {
     @Autowired
     private ServletContext servletContext;
 
+    @Value("${jwt.secret}")
+    private String jwtSecret;
+    
     @PostMapping(value = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         Optional<Account> accountOpt = accountService.login(request.getGmail(), request.getMatKhau());
@@ -60,16 +67,34 @@ public class account_controller {
         String sinhnhatStr = account.getSinhnhat() != null
             ? new SimpleDateFormat("yyyy-MM-dd").format(account.getSinhnhat())
             : "N/A";
-
+        
+        long expirationTime = 86400000; // 24 giờ (tùy chỉnh)
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + expirationTime);
+        
+        byte[] secretKeyBytes;
+        try {
+            secretKeyBytes = Base64.getDecoder().decode(jwtSecret);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(500).body("Lỗi giải mã jwtSecret: " + e.getMessage());
+        }
+        
+        String token = Jwts.builder()
+                .setSubject(account.getGmail())
+                .claim("id", account.getId())
+                .claim("role", account.getRole().name())
+                .claim("hoten", account.getHoTen())
+                .claim("diachi", account.getDiachi())
+                .claim("gioitinh", account.isSex())
+                .claim("sinhnhat", sinhnhatStr)
+                .setIssuedAt(now)
+                .setExpiration(expiryDate)
+                .signWith(io.jsonwebtoken.SignatureAlgorithm.HS512, secretKeyBytes) // Thay bằng jwtSecret từ cấu hình
+                .compact();
         return ResponseEntity.ok(Map.of(
-            "id", account.getId(),
-            "gmail", account.getGmail(),
-            "role", account.getRole().name(),
-            "hoten", account.getHoTen(),
-            "diachi", account.getDiachi(),
-            "gioitinh", account.isSex(),
-            "sinhnhat", sinhnhatStr
-        ));
+                "token", token,
+                "message", "Đăng nhập thành công"
+            ));
     }
     @PostMapping(value = "/signup", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> signup(@RequestBody SignupRequest request) {

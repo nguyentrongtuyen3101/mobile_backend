@@ -3,6 +3,8 @@ package mobile.com.api.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -22,8 +24,13 @@ import java.util.Properties;
 @Configuration // Thêm annotation này
 @EnableWebMvc
 @ComponentScan(basePackages = "mobile.com.api") // Thêm để scan controller
+@PropertySource("classpath:application.properties") // Đọc file application.properties
 public class web_config extends AbstractAnnotationConfigDispatcherServletInitializer implements WebMvcConfigurer {
 
+	@Bean
+    public static PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer() {
+        return new PropertySourcesPlaceholderConfigurer();
+    }
     @Override
     protected Class<?>[] getRootConfigClasses() {
         return new Class<?>[]{api_db_spring_config.class}; // Liên kết với file config chính
