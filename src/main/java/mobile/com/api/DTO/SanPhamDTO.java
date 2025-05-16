@@ -8,11 +8,12 @@ public class SanPhamDTO {
     private double giaTien;
     private String duongDanAnh;
     private int soLuong;
+    private String donVi;
 
     // Constructor
     public SanPhamDTO() {}
 
-    public SanPhamDTO(Long id, String loai, String tenSanPham, String moTa, double giaTien, String duongDanAnh, int soLuong) {
+    public SanPhamDTO(Long id, String loai, String tenSanPham, String moTa, double giaTien, String duongDanAnh, int soLuong,String donvi) {
         this.id = id;
         this.loai = loai;
         this.tenSanPham = tenSanPham;
@@ -20,6 +21,7 @@ public class SanPhamDTO {
         this.giaTien = giaTien;
         this.duongDanAnh = duongDanAnh;
         this.soLuong = soLuong;
+        this.donVi = donvi;
     }
 
     // Getters & Setters
@@ -77,5 +79,12 @@ public class SanPhamDTO {
 
     public void setSoLuong(int soLuong) {
         this.soLuong = soLuong;
+    }
+    public String getDonVi() 
+    { 
+    	return donVi; 
+    }
+    public void setdonvi(String donvi) {
+        this.donVi = donvi;
     }
 }

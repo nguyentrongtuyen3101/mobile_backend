@@ -1,41 +1,30 @@
 package mobile.com.api.controller;
 
-import mobile.com.api.DTO.SanPhamRequest;
-import mobile.com.api.DTO.GioHangResponseDTO;
 import mobile.com.api.DTO.LoginRequest;
-import mobile.com.api.DTO.SanPhamDTO;
 import mobile.com.api.DTO.SignupRequest;
-import mobile.com.api.DTO.giohangDTO;
 import mobile.com.api.entity.Account;
-import mobile.com.api.entity.GioHang;
-import mobile.com.api.entity.SanPham;
-import mobile.com.api.entity.SanPham.LoaiSanPham;
 import mobile.com.api.service.account_service;
-import mobile.com.api.service.SanPhamService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
 import java.util.Base64;
+import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+
 @RestController
 @RequestMapping("/checkmobile")
 @CrossOrigin(origins = "*")
@@ -47,14 +36,29 @@ public class account_controller {
     private account_service accountService;
 
     @Autowired
-    private SanPhamService sanPhamService;
-
-    @Autowired
     private ServletContext servletContext;
 
-    @Value("${jwt.secret}")
-    private String jwtSecret;
-    
+    // Khai báo jwtSecret trực tiếp trong controller
+    private static final String jwtSecret = "TXlTdXBlclNlY3JldEtleTEyMyFAI015U3VwZXJTZWNyZXRLZXkxMjMhQCNNeVN1cGVyU2VjcmV0S2V5MTIzIUAjTXlTdXBlclNlY3JldEtleTEyMyFAIw==";
+
+    // Lấy claims từ token trong request
+    private Claims getClaimsFromToken(String token) {
+        try {
+            byte[] secretKeyBytes = Base64.getDecoder().decode(jwtSecret);
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(secretKeyBytes)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+            logger.info("Token Issued At (iat): {}", new Date(claims.getIssuedAt().getTime()));
+            logger.info("Token Expiration (exp): {}", new Date(claims.getExpiration().getTime()));
+            return claims;
+        } catch (Exception e) {
+            logger.error("Lỗi giải mã token: {}", e.getMessage());
+            return null;
+        }
+    }
+
     @PostMapping(value = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         Optional<Account> accountOpt = accountService.login(request.getGmail(), request.getMatKhau());
@@ -63,22 +67,15 @@ public class account_controller {
         }
         Account account = accountOpt.get();
 
-        // Định dạng sinhnhat thành chuỗi YYYY-MM-DD
         String sinhnhatStr = account.getSinhnhat() != null
             ? new SimpleDateFormat("yyyy-MM-dd").format(account.getSinhnhat())
             : "N/A";
-        
-        long expirationTime = 86400000; // 24 giờ (tùy chỉnh)
+
+        long expirationTime = 86400000; // 24 giờ
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expirationTime);
-        
-        byte[] secretKeyBytes;
-        try {
-            secretKeyBytes = Base64.getDecoder().decode(jwtSecret);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(500).body("Lỗi giải mã jwtSecret: " + e.getMessage());
-        }
-        
+
+        byte[] secretKeyBytes = Base64.getDecoder().decode(jwtSecret);
         String token = Jwts.builder()
                 .setSubject(account.getGmail())
                 .claim("id", account.getId())
@@ -89,20 +86,22 @@ public class account_controller {
                 .claim("sinhnhat", sinhnhatStr)
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
-                .signWith(io.jsonwebtoken.SignatureAlgorithm.HS512, secretKeyBytes) // Thay bằng jwtSecret từ cấu hình
+                .signWith(io.jsonwebtoken.SignatureAlgorithm.HS512, secretKeyBytes)
                 .compact();
+
         return ResponseEntity.ok(Map.of(
                 "token", token,
                 "message", "Đăng nhập thành công"
             ));
     }
+
     @PostMapping(value = "/signup", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> signup(@RequestBody SignupRequest request) {
         try {
-        	Account existingAccount = accountService.findByGmail(request.getGmail());
+            Account existingAccount = accountService.findByGmail(request.getGmail());
             if (existingAccount != null) {
                 return ResponseEntity.status(404).body(Map.of(
-                    "message", "đã có tài khoản với Gmail: " + request.getGmail()
+                    "message", "Đã có tài khoản với Gmail: " + request.getGmail()
                 ));
             }
             Account newAccount = accountService.signup(request);
@@ -116,102 +115,55 @@ public class account_controller {
             return ResponseEntity.status(400).body(e.getMessage());
         }
     }
-    @PostMapping(value = "/them", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, String>> themSanPham(
-            @RequestBody SanPhamRequest request,
-            HttpServletRequest httpRequest) {
-        SanPham sanPham = new SanPham();
-        sanPham.setTenSanPham(request.getTenSanPham());
-        sanPham.setSoLuong(request.getSoLuong());
-        sanPham.setMoTa(request.getMoTa());
-        sanPham.setGiaTien(request.getGiaTien());
 
-        // Xử lý ảnh
-        String duongDanAnh = request.getDuongDanAnh();
-        if (duongDanAnh != null && duongDanAnh.startsWith("data:image")) {
-            try {
-                String base64Image = duongDanAnh.split(",")[1];
-                byte[] imageBytes = Base64.getDecoder().decode(base64Image);
-                String fileName = "product_" + System.currentTimeMillis() + ".jpg";
-
-                ServletContext servletContext = httpRequest.getServletContext();
-                String uploadDir = servletContext.getRealPath("/uploads/");
-                Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
-                logger.info("Đường dẫn lưu ảnh: {}", uploadPath.toString());
-
-                if (!Files.exists(uploadPath)) {
-                    logger.info("Tạo thư mục: {}", uploadPath.toString());
-                    Files.createDirectories(uploadPath);
-                }
-
-                if (!Files.isWritable(uploadPath)) {
-                    throw new Exception("Không có quyền ghi vào thư mục: " + uploadPath.toString());
-                }
-
-                Path filePath = uploadPath.resolve(fileName);
-                logger.info("Ghi file vào: {}", filePath.toString());
-                Files.write(filePath, imageBytes);
-                sanPham.setDuongDanAnh("/uploads/" + fileName);
-            } catch (Exception e) {
-                logger.error("Lỗi khi lưu ảnh", e);
-                Map<String, String> response = new HashMap<>();
-                response.put("status", "error");
-                response.put("message", "Lỗi khi lưu ảnh: " + e.getMessage());
-                return ResponseEntity.badRequest().body(response);
-            }
-        } else {
-            sanPham.setDuongDanAnh(duongDanAnh != null ? duongDanAnh : "default-product.jpg");
+    @GetMapping(value = "/showaccount", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> showaccount(HttpServletRequest httpRequest) {
+        String authHeader = httpRequest.getHeader("Authorization");
+        logger.info("Authorization Header: {}", authHeader);
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body(Map.of(
+                "message", "Token không hợp lệ hoặc không tồn tại"
+            ));
         }
 
-        if (request.getLoai() != null) {
-            try {
-                sanPham.setLoai(LoaiSanPham.valueOf(request.getLoai()));
-            } catch (IllegalArgumentException e) {
-                Map<String, String> response = new HashMap<>();
-                response.put("status", "error");
-                response.put("message", "Loại sản phẩm không hợp lệ: " + request.getLoai());
-                return ResponseEntity.badRequest().body(response);
-            }
+        String token = authHeader.substring(7);
+        logger.info("Token received: {}", token);
+        Claims claims = getClaimsFromToken(token);
+        if (claims == null) {
+            return ResponseEntity.status(401).body(Map.of(
+                "message", "Token không hợp lệ hoặc đã hết hạn"
+            ));
         }
 
-        SanPham existingProduct = sanPhamService.findByTenSanPham(request.getTenSanPham());
-        Map<String, String> response = new HashMap<>();
-        if (existingProduct != null) {
-            existingProduct.setSoLuong(existingProduct.getSoLuong() + request.getSoLuong());
-            sanPhamService.save(existingProduct);
-            response.put("action", "updated");
-        } else {
-            sanPhamService.save(sanPham);
-            response.put("action", "created");
-        }
-        response.put("status", "success");
-        return ResponseEntity.ok(response);
-    }
- // Thêm vào phần cuối của class account_controller
-    @GetMapping(value = "/sanpham/theoloai")
-    public ResponseEntity<List<SanPhamDTO>> getSanPhamByLoai(@RequestParam("loai") String loai) {
         try {
-            LoaiSanPham loaiSanPham = LoaiSanPham.valueOf(loai.toUpperCase());
-            List<SanPham> sanPhams = sanPhamService.findByLoai(loaiSanPham);
-            List<SanPhamDTO> sanPhamDTOs = sanPhams.stream().map(sp -> new SanPhamDTO(
-                sp.getId(),
-                sp.getLoai().name(),
-                sp.getTenSanPham(),
-                sp.getMoTa(),
-                sp.getGiaTien(),
-                sp.getDuongDanAnh(),
-                sp.getSoLuong()
-            )).collect(Collectors.toList());
-            return ResponseEntity.ok(sanPhamDTOs);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(null);
+            String gmail = claims.getSubject();
+            Account newAccount = accountService.findByGmail(gmail);
+            if (newAccount == null) {
+                return ResponseEntity.status(404).body(Map.of(
+                    "message", "Không tìm thấy tài khoản với Gmail: " + gmail
+                ));
+            }
+
+            String sinhnhatStr = newAccount.getSinhnhat() != null
+                ? new SimpleDateFormat("yyyy-MM-dd").format(newAccount.getSinhnhat())
+                : "";
+            return ResponseEntity.ok(Map.of(
+                "id", newAccount.getId(),
+                "gmail", newAccount.getGmail(),
+                "hoten", newAccount.getHoTen(),
+                "diachi", newAccount.getDiachi(),
+                "sinhnhat", sinhnhatStr,
+                "gioitinh", newAccount.isSex(),
+                "message", "Lấy thông tin tài khoản thành công"
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(400).body(e.getMessage());
         }
     }
-    
+
     @PostMapping(value = "/quenmk", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> quenmk(@RequestBody SignupRequest request) {
         try {
-            // Kiểm tra xem Gmail có tồn tại không
             Account existingAccount = accountService.findByGmail(request.getGmail());
             if (existingAccount == null) {
                 return ResponseEntity.status(404).body(Map.of(
@@ -219,7 +171,6 @@ public class account_controller {
                 ));
             }
 
-            // Cập nhật mật khẩu mới
             accountService.updatemk(existingAccount, request.getGmail(), request.getMatKhau());
 
             return ResponseEntity.ok(Map.of(
@@ -232,6 +183,7 @@ public class account_controller {
             return ResponseEntity.status(400).body(e.getMessage());
         }
     }
+
     @PostMapping(value = "/send-otp", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> sendOtp(@RequestBody Map<String, String> request) {
         try {
@@ -246,7 +198,7 @@ public class account_controller {
             String otp = accountService.sendOtp(email);
             return ResponseEntity.ok(Map.of(
                 "message", "OTP đã được gửi tới " + email,
-                "otp", otp // Trả về OTP để frontend lưu
+                "otp", otp
             ));
         } catch (Exception e) {
             return ResponseEntity.status(400).body(Map.of(
@@ -254,10 +206,26 @@ public class account_controller {
             ));
         }
     }
+
     @PostMapping(value = "/updateaccount", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> updateacc(@RequestBody LoginRequest request) {
-    	try {
-            // Kiểm tra xem Gmail có tồn tại không
+    public ResponseEntity<?> updateacc(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+        String authHeader = httpRequest.getHeader("Authorization");
+        logger.info("Authorization Header: {}", authHeader);
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body(Map.of(
+                "message", "Token không hợp lệ hoặc không tồn tại"
+            ));
+        }
+
+        String token = authHeader.substring(7);
+        logger.info("Token received: {}", token);
+        Claims claims = getClaimsFromToken(token);
+        if (claims == null) {
+            return ResponseEntity.status(401).body(Map.of(
+                "message", "Token không hợp lệ hoặc đã hết hạn"
+            ));
+        }
+        try {
             Account existingAccount = accountService.findByGmail(request.getGmail());
             if (existingAccount == null) {
                 return ResponseEntity.status(404).body(Map.of(
@@ -265,7 +233,6 @@ public class account_controller {
                 ));
             }
 
-            // Cập nhật mật khẩu mới
             accountService.updateacc(request);
             Account updatedAccount = accountService.findByGmail(request.getGmail());
             String sinhnhatStr = updatedAccount.getSinhnhat() != null
@@ -278,7 +245,7 @@ public class account_controller {
                 "role", existingAccount.getRole().name(),
                 "hoten", existingAccount.getHoTen(),
                 "gioitinh", existingAccount.isSex(),
-                "sinhnhat", existingAccount.getSinhnhat(),  
+                "sinhnhat", sinhnhatStr,
                 "diachi", existingAccount.getDiachi(),
                 "message", "Cập nhật thông tin tài khoản thành công"
             ));
@@ -286,14 +253,29 @@ public class account_controller {
             return ResponseEntity.status(400).body(e.getMessage());
         }
     }
- // API mới để upload ảnh đại diện
+
     @PostMapping(value = "/uploadprofilepic", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> uploadProfilePicture(
             @RequestParam("gmail") String gmail,
             @RequestParam("file") MultipartFile file,
             HttpServletRequest httpRequest) {
+        String authHeader = httpRequest.getHeader("Authorization");
+        logger.info("Authorization Header: {}", authHeader);
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body(Map.of(
+                "message", "Token không hợp lệ hoặc không tồn tại"
+            ));
+        }
+
+        String token = authHeader.substring(7);
+        logger.info("Token received: {}", token);
+        Claims claims = getClaimsFromToken(token);
+        if (claims == null) {
+            return ResponseEntity.status(401).body(Map.of(
+                "message", "Token không hợp lệ hoặc đã hết hạn"
+            ));
+        }
         try {
-            // Kiểm tra tài khoản
             Account existingAccount = accountService.findByGmail(gmail);
             if (existingAccount == null) {
                 logger.error("Không tìm thấy tài khoản với Gmail: {}", gmail);
@@ -302,7 +284,6 @@ public class account_controller {
                 ));
             }
 
-            // Kiểm tra file
             if (file.isEmpty()) {
                 logger.error("File ảnh không được để trống cho Gmail: {}", gmail);
                 return ResponseEntity.status(400).body(Map.of(
@@ -310,9 +291,8 @@ public class account_controller {
                 ));
             }
 
-            // Lưu file ảnh
-            String fileName = "profile_" + gmail.replace("@", "_") + "_" + System.currentTimeMillis() + ".jpg";
-            String uploadDir = servletContext.getRealPath("/uploads/"); // Sửa chữ hoa thành chữ thường
+            String fileName = "profile_" + gmail.replace("@", "") + "" + System.currentTimeMillis() + ".jpg";
+            String uploadDir = servletContext.getRealPath("/uploads/");
             Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
 
             logger.info("Đường dẫn lưu ảnh: {}", uploadPath.toString());
@@ -322,7 +302,6 @@ public class account_controller {
                 Files.createDirectories(uploadPath);
             }
 
-            // Kiểm tra quyền ghi
             if (!Files.isWritable(uploadPath)) {
                 logger.error("Không có quyền ghi vào thư mục: {}", uploadPath.toString());
                 return ResponseEntity.status(500).body(Map.of(
@@ -334,12 +313,10 @@ public class account_controller {
             logger.info("Ghi file vào: {}", filePath.toString());
             Files.write(filePath, file.getBytes());
 
-            // Cập nhật đường dẫn ảnh trong database
-            String duongDanAnh = "/uploads/" + fileName; // Sửa chữ hoa thành chữ thường
+            String duongDanAnh = "/uploads/" + fileName;
             logger.info("Cập nhật đường dẫn ảnh vào DB: {}", duongDanAnh);
             accountService.updateProfilePicture(gmail, duongDanAnh);
 
-            // Lấy tài khoản đã cập nhật
             Account updatedAccount = accountService.findByGmail(gmail);
             if (updatedAccount.getDuongDanAnh() == null || !updatedAccount.getDuongDanAnh().equals(duongDanAnh)) {
                 logger.error("Đường dẫn ảnh không được cập nhật vào DB cho Gmail: {}", gmail);
@@ -366,106 +343,6 @@ public class account_controller {
             logger.error("Lỗi khi upload ảnh đại diện cho: {}", gmail, e);
             return ResponseEntity.status(500).body(Map.of(
                 "message", "Lỗi khi upload ảnh: " + e.getMessage()
-            ));
-        }
-    }
- // API để lấy chi tiết sản phẩm theo id
-    @GetMapping(value = "/sanphamchitiet/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> getSanPhamById(@PathVariable("id") Long id) {
-        try {
-            SanPham sanPham = sanPhamService.findByid(id);
-            if (sanPham == null) {
-                return ResponseEntity.status(404).body(Map.of(
-                    "message", "Không tìm thấy sản phẩm với id: " + id
-                ));
-            }
-            SanPhamDTO sanPhamDTO = new SanPhamDTO(
-                sanPham.getId(),
-                sanPham.getLoai().name(),
-                sanPham.getTenSanPham(),
-                sanPham.getMoTa(),
-                sanPham.getGiaTien(),
-                sanPham.getDuongDanAnh(),
-                sanPham.getSoLuong()
-            );
-            return ResponseEntity.ok(sanPhamDTO);
-        } catch (Exception e) {
-            logger.error("Lỗi khi lấy sản phẩm với id: {}", id, e);
-            return ResponseEntity.status(500).body(Map.of(
-                "message", "Lỗi khi lấy sản phẩm: " + e.getMessage()
-            ));
-        }
-    }
-    @PostMapping(value = "/themgiohang", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> addgiohang(@RequestBody giohangDTO request) {
-        try {
-            if (request.getSoLuong() <= 0) {
-                return ResponseEntity.status(400).body(Map.of(
-                    "message", "Số lượng phải lớn hơn 0"
-                ));
-            }
-            Account account = new Account();
-            account.setId(request.getAccountId());
-
-            SanPham sanPham = new SanPham();
-            sanPham.setId(request.getSanPhamId());
-            
-            GioHang gioHang = new GioHang();
-            gioHang.setAccount(account);
-            gioHang.setSanPham(sanPham);
-            gioHang.setSoLuong(request.getSoLuong());
-
-            GioHang newgioHang = sanPhamService.addgiohang(gioHang);
-            if (newgioHang == null) {
-                return ResponseEntity.status(500).body(Map.of(
-                    "message", "Không thể thêm sản phẩm vào giỏ hàng"
-                ));
-            }
-
-            giohangDTO responseDTO = new giohangDTO(
-                newgioHang.getId(),
-                newgioHang.getAccount().getId(),
-                newgioHang.getSanPham().getId(),
-                newgioHang.getSoLuong(),
-                "Thêm vào giỏ hàng thành công"
-            );
-            return ResponseEntity.ok(responseDTO);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(400).body(Map.of(
-                "message", "Lỗi khi thêm vào giỏ hàng: " + e.getMessage()
-            ));
-        }
-    }
-    @GetMapping(value = "/giohang", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> getGioHang(@RequestParam("accountId") Long accountId) {
-        try {
-            List<GioHang> gioHangs = sanPhamService.getGioHangByAccount(accountId);
-            List<GioHangResponseDTO> gioHangDTOs = gioHangs.stream().map(gioHang -> new GioHangResponseDTO(
-                gioHang.getId(),
-                gioHang.getAccount().getId(),
-                gioHang.getSanPham().getId(),
-                gioHang.getSanPham().getTenSanPham(),
-                gioHang.getSanPham().getDuongDanAnh(),
-                gioHang.getSanPham().getGiaTien(),
-                gioHang.getSoLuong()
-            )).collect(Collectors.toList());
-            return ResponseEntity.ok(gioHangDTOs);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of(
-                "message", "Lỗi khi lấy giỏ hàng: " + e.getMessage()
-            ));
-        }
-    }
-    @DeleteMapping(value = "/giohang/{id}")
-    public ResponseEntity<?> deleteGioHang(@PathVariable("id") Long gioHangId) {
-        try {
-            sanPhamService.deleteGioHang(gioHangId);
-            return ResponseEntity.ok(Map.of(
-                "message", "Xóa sản phẩm khỏi giỏ hàng thành công"
-            ));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of(
-                "message", "Lỗi khi xóa sản phẩm khỏi giỏ hàng: " + e.getMessage()
             ));
         }
     }

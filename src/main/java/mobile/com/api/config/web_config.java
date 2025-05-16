@@ -1,10 +1,12 @@
 package mobile.com.api.config;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -46,12 +48,15 @@ public class web_config extends AbstractAnnotationConfigDispatcherServletInitial
         return new String[]{"/api/*"}; // Ánh xạ DispatcherServlet tới "/"
     }
 
+    
     @Override
     protected Filter[] getServletFilters() {
-        CharacterEncodingFilter filter = new CharacterEncodingFilter();
-        filter.setEncoding("UTF-8");
-        filter.setForceEncoding(true);
-        return new Filter[]{filter}; // Thêm CharacterEncodingFilter
+        CharacterEncodingFilter characterEncodingFilter = new CharacterEncodingFilter();
+        characterEncodingFilter.setEncoding("UTF-8");
+        characterEncodingFilter.setForceEncoding(true);
+
+        // Inject JwtFilter (đã được Spring quản lý nhờ @Component trong JwtFilter.java)
+        return new Filter[]{characterEncodingFilter};
     }
 
     @Override
@@ -115,5 +120,11 @@ public class web_config extends AbstractAnnotationConfigDispatcherServletInitial
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations("/uploads/") // Sử dụng đường dẫn tương đối trong ứng dụng
                 .setCachePeriod(0);
+    }
+    @Bean
+    public static PropertySourcesPlaceholderConfigurer propertyConfig() {
+        PropertySourcesPlaceholderConfigurer config = new PropertySourcesPlaceholderConfigurer();
+        config.setLocation(new ClassPathResource("application.properties"));
+        return config;
     }
 }

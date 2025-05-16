@@ -3,7 +3,7 @@ package mobile.com.api.DTO;
 import org.ietf.jgss.GSSContext;
 
 
-import mobile.com.api.entity.SanPham.LoaiSanPham;
+//import mobile.com.api.entity.SanPham.LoaiSanPham;
 
 public class SanPhamRequest {
     private String loai;

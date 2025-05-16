@@ -30,8 +30,7 @@ public class account_dao_imp implements account_dao {
             return query.uniqueResult();
 		} catch (Exception e) {
 			 return null;
-		}
-        
+		}  
     }
 
     @Override

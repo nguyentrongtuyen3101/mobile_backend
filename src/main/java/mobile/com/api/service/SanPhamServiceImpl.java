@@ -1,74 +1,117 @@
 package mobile.com.api.service;
 
+import mobile.com.api.DTO.LoaiSanPhamDTO;
 import mobile.com.api.dao.SanPhamDao;
 import mobile.com.api.entity.GioHang;
+import mobile.com.api.entity.LoaiSanPham;
 import mobile.com.api.entity.SanPham;
-import mobile.com.api.entity.SanPham.LoaiSanPham;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
-@Transactional
 public class SanPhamServiceImpl implements SanPhamService {
 
     @Autowired
     private SanPhamDao sanPhamDao;
 
-   
     @Override
+    @Transactional
     public void save(SanPham sanPham) {
         sanPhamDao.save(sanPham);
     }
 
     @Override
+    @Transactional
     public SanPham findByTenSanPham(String tenSanPham) {
         return sanPhamDao.findByTenSanPham(tenSanPham);
     }
+
     @Override
-    public List<SanPham> findByLoai(LoaiSanPham loai) {
-        return sanPhamDao.findByLoai(loai);
+    @Transactional
+    public List<SanPham> findByLoai(Long idLoai) {
+        return sanPhamDao.findByLoai(idLoai);
     }
+
     @Override
-    public SanPham findByid(long id)
-    {
-    	return sanPhamDao.findByid(id);
+    @Transactional
+    public SanPham findByid(long id) {
+        return sanPhamDao.findByid(id);
     }
-    
+
     @Override
+    @Transactional
     public GioHang addgiohang(GioHang gioHang) {
-        GioHang existingGioHang = sanPhamDao.findGioHangByAccountAndSanPham(
-            gioHang.getAccount().getId(),
-            gioHang.getSanPham().getId()
-        );
-
-        if (existingGioHang != null) {
-            // Kiểm tra thời gian cập nhật gần nhất
-            long lastUpdated = existingGioHang.getLastUpdated() != null ? existingGioHang.getLastUpdated().getTime() : 0;
-            long currentTime = System.currentTimeMillis();
-            if (currentTime - lastUpdated < 5000) { // 5 giây
-                throw new RuntimeException("Yêu cầu cập nhật giỏ hàng quá nhanh, vui lòng thử lại sau!");
-            }
-
-            existingGioHang.setSoLuong(existingGioHang.getSoLuong() + gioHang.getSoLuong());
-            existingGioHang.setLastUpdated(new Date(currentTime));
-            sanPhamDao.addgiohang(existingGioHang);
-            return existingGioHang;
-        } else {
-            gioHang.setLastUpdated(new Date(0));
-            sanPhamDao.addgiohang(gioHang);
-            return gioHang;
-        }
+        return sanPhamDao.addgiohang(gioHang);
     }
+
     @Override
+    @Transactional
+    public GioHang findGioHangByAccountAndSanPham(Long accountId, Long sanPhamId) {
+        return sanPhamDao.findGioHangByAccountAndSanPham(accountId, sanPhamId);
+    }
+
+    @Override
+    @Transactional
     public List<GioHang> getGioHangByAccount(Long accountId) {
         return sanPhamDao.getGioHangByAccount(accountId);
     }
+
     @Override
+    @Transactional
     public void deleteGioHang(Long gioHangId) {
         sanPhamDao.deleteGioHang(gioHangId);
     }
+
+    @Override
+    @Transactional
+    public LoaiSanPham findLoaiSanPhamById(Long id) {
+        return sanPhamDao.findLoaiSanPhamById(id);
+    }
+    @Override
+    @Transactional
+    public List<LoaiSanPham> findAllLoaiSanPham() { // Lấy danh sách tất cả loại sản phẩm thông qua DAO
+        return sanPhamDao.findAllLoaiSanPham();
+    }
+    @Override
+    @Transactional
+    public void saveLoaiSanPham(LoaiSanPham loaiSanPham) {
+        sanPhamDao.saveLoaiSanPham(loaiSanPham);
+    }/*
+    @Override
+    @Transactional
+    public Map<String, Object> findAllLoaiSanPhamPaged(int page, int size) {
+        List<LoaiSanPham> allLoaiSanPhams = sanPhamDao.findAllLoaiSanPham();
+
+        int totalElements = allLoaiSanPhams.size();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        int startItem = page * size;
+        List<LoaiSanPhamDTO> pagedList;
+
+        if (totalElements <= startItem) {
+            pagedList = List.of();
+        } else {
+            int toIndex = Math.min(startItem + size, totalElements);
+            pagedList = allLoaiSanPhams.subList(startItem, toIndex).stream()
+                .map(loai -> new LoaiSanPhamDTO(
+                    loai.getId(),
+                    loai.getTenLoai(),
+                    loai.getDonVi(),
+                    loai.getDuongDanAnh()
+                ))
+                .collect(Collectors.toList());
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", pagedList);
+        response.put("totalPages", totalPages);
+        response.put("totalElements", totalElements);
+        response.put("currentPage", page);
+        return response;
+    }*/
 }
