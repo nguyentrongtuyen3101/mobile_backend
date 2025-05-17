@@ -9,6 +9,8 @@ import mobile.com.api.entity.SanPham;
 import mobile.com.api.entity.LoaiSanPham;
 import mobile.com.api.entity.Account;
 import mobile.com.api.service.SanPhamService;
+import mobile.com.api.service.account_service;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +28,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+
 @RestController
 @RequestMapping("/sanphammagager")
 @CrossOrigin(origins = "*")
@@ -35,9 +40,53 @@ public class SanPhamController {
 
     @Autowired
     private SanPhamService sanPhamService;
+    @Autowired
+    private account_service account_service;
 
     @Autowired
     private ServletContext servletContext;
+
+    // Khai báo jwtSecret trực tiếp trong controller
+    private static final String jwtSecret = "TXlTdXBlclNlY3JldEtleTEyMyFAI015U3VwZXJTZWNyZXRLZXkxMjMhQCNNeVN1cGVyU2VjcmV0S2V5MTIzIUAjTXlTdXBlclNlY3JldEtleTEyMyFAIw==";
+
+    // Hàm lấy claims từ token
+    private Claims getClaimsFromToken(String token) {
+        try {
+            byte[] secretKeyBytes = Base64.getDecoder().decode(jwtSecret);
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(secretKeyBytes)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+            logger.info("Token Issued At (iat): {}", claims.getIssuedAt());
+            logger.info("Token Expiration (exp): {}", claims.getExpiration());
+            return claims;
+        } catch (Exception e) {
+            logger.error("Lỗi giải mã token: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    // Hàm kiểm tra token
+    private ResponseEntity<?> checkToken(HttpServletRequest httpRequest) {
+        String authHeader = httpRequest.getHeader("Authorization");
+        logger.info("Authorization Header: {}", authHeader);
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body(Map.of(
+                "message", "Token không hợp lệ hoặc không tồn tại"
+            ));
+        }
+
+        String token = authHeader.substring(7);
+        logger.info("Token received: {}", token);
+        Claims claims = getClaimsFromToken(token);
+        if (claims == null) {
+            return ResponseEntity.status(401).body(Map.of(
+                "message", "Token không hợp lệ hoặc đã hết hạn"
+            ));
+        }
+        return null; // Token hợp lệ, trả về null để tiếp tục xử lý API
+    }
 
     @PostMapping(value = "/them", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, String>> themSanPham(
@@ -115,7 +164,7 @@ public class SanPhamController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping(value = "/sanpham/idloai",produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/sanpham/idloai", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<SanPhamDTO>> getSanPhamByLoai(@RequestParam("idloai") String loai) {
         try {
             Long idLoai = Long.valueOf(loai);
@@ -165,15 +214,33 @@ public class SanPhamController {
     }
 
     @PostMapping(value = "/themgiohang", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> addgiohang(@RequestBody giohangDTO request) {
+    public ResponseEntity<?> addgiohang(@RequestBody giohangDTO request, HttpServletRequest httpRequest) {
+        // Kiểm tra token
+        ResponseEntity<?> tokenCheck = checkToken(httpRequest);
+        if (tokenCheck != null) {
+            return tokenCheck;
+        }
+
+        // Lấy gmail từ token
+        String authHeader = httpRequest.getHeader("Authorization");
+        String token = authHeader.substring(7);
+        Claims claims = getClaimsFromToken(token);
+        String gmail = claims.getSubject();
+
         try {
             if (request.getSoLuong() <= 0) {
                 return ResponseEntity.status(400).body(Map.of(
                     "message", "Số lượng phải lớn hơn 0"
                 ));
             }
-            Account account = new Account();
-            account.setId(request.getAccountId());
+
+            // Tìm account bằng gmail
+            Account account = account_service.findByGmail(gmail);
+            if (account == null) {
+                return ResponseEntity.status(404).body(Map.of(
+                    "message", "Không tìm thấy tài khoản với Gmail: " + gmail
+                ));
+            }
 
             SanPham sanPham = new SanPham();
             sanPham.setId(request.getSanPhamId());
@@ -206,9 +273,29 @@ public class SanPhamController {
     }
 
     @GetMapping(value = "/giohang", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> getGioHang(@RequestParam("accountId") Long accountId) {
+    public ResponseEntity<?> getGioHang(HttpServletRequest httpRequest) {
+        // Kiểm tra token
+        ResponseEntity<?> tokenCheck = checkToken(httpRequest);
+        if (tokenCheck != null) {
+            return tokenCheck;
+        }
+
+        // Lấy gmail từ token
+        String authHeader = httpRequest.getHeader("Authorization");
+        String token = authHeader.substring(7);
+        Claims claims = getClaimsFromToken(token);
+        String gmail = claims.getSubject();
+
         try {
-            List<GioHang> gioHangs = sanPhamService.getGioHangByAccount(accountId);
+            // Tìm account bằng gmail
+            Account account = account_service.findByGmail(gmail);
+            if (account == null) {
+                return ResponseEntity.status(404).body(Map.of(
+                    "message", "Không tìm thấy tài khoản với Gmail: " + gmail
+                ));
+            }
+
+            List<GioHang> gioHangs = sanPhamService.getGioHangByAccount(account.getId());
             List<GioHangResponseDTO> gioHangDTOs = gioHangs.stream().map(gioHang -> new GioHangResponseDTO(
                 gioHang.getId(),
                 gioHang.getAccount().getId(),
@@ -226,8 +313,14 @@ public class SanPhamController {
         }
     }
 
-    @DeleteMapping(value = "/giohang/{id}")
-    public ResponseEntity<?> deleteGioHang(@PathVariable("id") Long gioHangId) {
+    @DeleteMapping(value = "/xoagiohang")
+    public ResponseEntity<?> deleteGioHang(@RequestParam("id") Long gioHangId, HttpServletRequest httpRequest) {
+        // Kiểm tra token
+        ResponseEntity<?> tokenCheck = checkToken(httpRequest);
+        if (tokenCheck != null) {
+            return tokenCheck;
+        }
+
         try {
             sanPhamService.deleteGioHang(gioHangId);
             return ResponseEntity.ok(Map.of(
@@ -239,17 +332,18 @@ public class SanPhamController {
             ));
         }
     }
+
     @GetMapping(value = "/loaisanpham", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<LoaiSanPham>> getAllLoaiSanPham() { // Lấy danh sách tất cả loại sản phẩm để hiển thị trong dropdown
+    public ResponseEntity<List<LoaiSanPham>> getAllLoaiSanPham() {
         try {
             List<LoaiSanPham> loaiSanPhams = sanPhamService.findAllLoaiSanPham();
             return ResponseEntity.ok(loaiSanPhams);
-            
         } catch (Exception e) {
             logger.error("Lỗi khi lấy danh sách loại sản phẩm: {}", e.getMessage());
             return ResponseEntity.status(500).body(null);
         }
     }
+
     @PostMapping(value = "/updateloaiimage", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, String>> updateLoaiSanPhamImage(
             @RequestBody Map<String, Object> request) {
@@ -301,5 +395,4 @@ public class SanPhamController {
             return ResponseEntity.badRequest().body(response);
         }
     }
- 
 }
