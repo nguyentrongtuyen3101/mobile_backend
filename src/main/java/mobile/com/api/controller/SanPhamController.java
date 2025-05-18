@@ -1,16 +1,22 @@
 package mobile.com.api.controller;
 
 import mobile.com.api.DTO.SanPhamRequest;
+import mobile.com.api.DTO.YeuThichDTO;
 import mobile.com.api.DTO.SanPhamDTO;
 import mobile.com.api.DTO.GioHangResponseDTO;
+import mobile.com.api.DTO.OrderDetailRequest;
 import mobile.com.api.DTO.giohangDTO;
+import mobile.com.api.DTO.orderrequest;
+import mobile.com.api.DTO.yeuthichreponseDTO;
 import mobile.com.api.entity.GioHang;
 import mobile.com.api.entity.SanPham;
+import mobile.com.api.entity.YeuThich;
 import mobile.com.api.entity.LoaiSanPham;
+import mobile.com.api.entity.Order;
+import mobile.com.api.entity.OrderDetail;
 import mobile.com.api.entity.Account;
 import mobile.com.api.service.SanPhamService;
 import mobile.com.api.service.account_service;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -242,29 +248,53 @@ public class SanPhamController {
                 ));
             }
 
-            SanPham sanPham = new SanPham();
-            sanPham.setId(request.getSanPhamId());
+            // Kiểm tra xem sản phẩm đã tồn tại trong giỏ hàng của tài khoản chưa
+            GioHang existingGioHang = sanPhamService.findGioHangByAccountAndSanPham(account.getId(), request.getSanPhamId());
+            if (existingGioHang != null) {
+                // Nếu đã tồn tại, cập nhật số lượng
+                int newQuantity = existingGioHang.getSoLuong() + request.getSoLuong();
+                existingGioHang.setSoLuong(newQuantity);
+                GioHang updatedGioHang = sanPhamService.addgiohang(existingGioHang); // Lưu lại
+                if (updatedGioHang == null) {
+                    return ResponseEntity.status(500).body(Map.of(
+                        "message", "Không thể cập nhật số lượng sản phẩm trong giỏ hàng"
+                    ));
+                }
 
-            GioHang gioHang = new GioHang();
-            gioHang.setAccount(account);
-            gioHang.setSanPham(sanPham);
-            gioHang.setSoLuong(request.getSoLuong());
+                giohangDTO responseDTO = new giohangDTO(
+                    updatedGioHang.getId(),
+                    updatedGioHang.getAccount().getId(),
+                    updatedGioHang.getSanPham().getId(),
+                    updatedGioHang.getSoLuong(),
+                    "Cập nhật số lượng giỏ hàng thành công"
+                );
+                return ResponseEntity.ok(responseDTO);
+            } else {
+                // Nếu chưa tồn tại, thêm mới
+                SanPham sanPham = new SanPham();
+                sanPham.setId(request.getSanPhamId());
 
-            GioHang newgioHang = sanPhamService.addgiohang(gioHang);
-            if (newgioHang == null) {
-                return ResponseEntity.status(500).body(Map.of(
-                    "message", "Không thể thêm sản phẩm vào giỏ hàng"
-                ));
+                GioHang gioHang = new GioHang();
+                gioHang.setAccount(account);
+                gioHang.setSanPham(sanPham);
+                gioHang.setSoLuong(request.getSoLuong());
+
+                GioHang newgioHang = sanPhamService.addgiohang(gioHang);
+                if (newgioHang == null) {
+                    return ResponseEntity.status(500).body(Map.of(
+                        "message", "Không thể thêm sản phẩm vào giỏ hàng"
+                    ));
+                }
+
+                giohangDTO responseDTO = new giohangDTO(
+                    newgioHang.getId(),
+                    newgioHang.getAccount().getId(),
+                    newgioHang.getSanPham().getId(),
+                    newgioHang.getSoLuong(),
+                    "Thêm vào giỏ hàng thành công"
+                );
+                return ResponseEntity.ok(responseDTO);
             }
-
-            giohangDTO responseDTO = new giohangDTO(
-                newgioHang.getId(),
-                newgioHang.getAccount().getId(),
-                newgioHang.getSanPham().getId(),
-                newgioHang.getSoLuong(),
-                "Thêm vào giỏ hàng thành công"
-            );
-            return ResponseEntity.ok(responseDTO);
         } catch (RuntimeException e) {
             return ResponseEntity.status(400).body(Map.of(
                 "message", "Lỗi khi thêm vào giỏ hàng: " + e.getMessage()
@@ -393,6 +423,264 @@ public class SanPhamController {
             response.put("status", "error");
             response.put("message", "Lỗi khi cập nhật ảnh: " + e.getMessage());
             return ResponseEntity.badRequest().body(response);
+        }
+    }
+    @PostMapping(value = "/themyeuthich", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> themyeuthich(@RequestBody YeuThichDTO request, HttpServletRequest httpRequest) {
+        // Kiểm tra token
+        ResponseEntity<?> tokenCheck = checkToken(httpRequest);
+        if (tokenCheck != null) {
+            return tokenCheck;
+        }
+
+        // Lấy gmail từ token
+        String authHeader = httpRequest.getHeader("Authorization");
+        String token = authHeader.substring(7);
+        Claims claims = getClaimsFromToken(token);
+        String gmail = claims.getSubject();
+
+        try {
+            // Tìm account bằng gmail
+            Account account = account_service.findByGmail(gmail);
+            if (account == null) {
+                return ResponseEntity.status(404).body(Map.of(
+                    "message", "Không tìm thấy tài khoản với Gmail: " + gmail
+                ));
+            }
+
+            SanPham sanPham = new SanPham();
+            sanPham.setId(request.getSanPhamId());
+
+            YeuThich yeuThich = new YeuThich();
+            yeuThich.setAccount(account);
+            yeuThich.setSanPham(sanPham);
+
+            YeuThich newyThich = sanPhamService.addThich(yeuThich);
+            if (newyThich == null) {
+                return ResponseEntity.status(500).body(Map.of(
+                    "message", "Không thể thêm sản phẩm vào yeu thich"
+                ));
+            }
+
+            YeuThichDTO responseDTO = new YeuThichDTO(
+                newyThich.getId(),
+                newyThich.getAccount().getId(),
+                newyThich.getSanPham().getId(),
+                "Thêm vào yeu thich thành công"
+            );
+            return ResponseEntity.ok(responseDTO);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(400).body(Map.of(
+                "message", "Lỗi khi thêm vào yeu thich: " + e.getMessage()
+            ));
+        }
+    }
+    @GetMapping(value = "/showyeuthich", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> showyeuthich(HttpServletRequest httpRequest) {
+        // Kiểm tra token
+        ResponseEntity<?> tokenCheck = checkToken(httpRequest);
+        if (tokenCheck != null) {
+            return tokenCheck;
+        }
+
+        // Lấy gmail từ token
+        String authHeader = httpRequest.getHeader("Authorization");
+        String token = authHeader.substring(7);
+        Claims claims = getClaimsFromToken(token);
+        String gmail = claims.getSubject();
+
+        try {
+            // Tìm account bằng gmail
+            Account account = account_service.findByGmail(gmail);
+            if (account == null) {
+                return ResponseEntity.status(404).body(Map.of(
+                    "message", "Không tìm thấy tài khoản với Gmail: " + gmail
+                ));
+            }
+
+            List<YeuThich> yeuThichs = sanPhamService.getyeuthichByAccount(account.getId());
+            List<yeuthichreponseDTO> yeuthichreponseDTOs = yeuThichs.stream().map(yeuthich -> new yeuthichreponseDTO(
+                yeuthich.getId(),
+                yeuthich.getAccount().getId(),
+                yeuthich.getSanPham().getId(),
+                yeuthich.getSanPham().getTenSanPham(),
+                yeuthich.getSanPham().getDuongDanAnh(),
+                yeuthich.getSanPham().getGiaTien()
+            )).collect(Collectors.toList());
+            return ResponseEntity.ok(yeuthichreponseDTOs);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of(
+                "message", "Lỗi khi lấy danh sach yeu thich : " + e.getMessage()
+            ));
+        }
+    }
+    @DeleteMapping(value = "/xoayeuthich")
+    public ResponseEntity<?> xoayeuthich(@RequestParam("id") Long yeuthichid, HttpServletRequest httpRequest) {
+        // Kiểm tra token
+        ResponseEntity<?> tokenCheck = checkToken(httpRequest);
+        if (tokenCheck != null) {
+            return tokenCheck;
+        }
+
+        try {
+            sanPhamService.deleteyeuthich(yeuthichid);
+            return ResponseEntity.ok(Map.of(
+                "message", "Xóa sản phẩm khỏi danh sach yeu thich thành công"
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of(
+                "message", "Lỗi khi xóa sản phẩm khỏi danh sach yeu thich: " + e.getMessage()
+            ));
+        }
+    }
+ // Endpoint mới để kiểm tra sản phẩm có trong danh sách yêu thích không
+    @GetMapping(value = "/check-favourite", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> checkFavourite(HttpServletRequest httpRequest, @RequestParam("sanPhamId") Long sanPhamId) {
+        // Kiểm tra token
+        ResponseEntity<?> tokenCheck = checkToken(httpRequest);
+        if (tokenCheck != null) {
+            return tokenCheck;
+        }
+
+        // Lấy gmail từ token
+        String authHeader = httpRequest.getHeader("Authorization");
+        String token = authHeader.substring(7);
+        Claims claims = getClaimsFromToken(token);
+        String gmail = claims.getSubject();
+
+        try {
+            // Tìm account bằng gmail
+            Account account = account_service.findByGmail(gmail);
+            if (account == null) {
+                return ResponseEntity.status(404).body(Map.of(
+                    "message", "Không tìm thấy tài khoản với Gmail: " + gmail
+               
+                ));
+            }
+
+            // Kiểm tra xem sản phẩm có trong danh sách yêu thích không
+            YeuThich yeuThich = sanPhamService.findyeuthuichByAccountAndSanPham(account.getId(), sanPhamId);
+            boolean isFavourite = yeuThich != null; // Nếu yeuThich không null, sản phẩm có trong danh sách yêu thích
+            return ResponseEntity.ok(Map.of(
+                "isFavourite", isFavourite
+            ));
+        } catch (Exception e) {
+            logger.error("Lỗi khi kiểm tra yêu thích: {}", e.getMessage());
+            return ResponseEntity.status(500).body(Map.of(
+                "message", "Lỗi khi kiểm tra yêu thích: " + e.getMessage()
+            ));
+        }
+    }
+    @PostMapping(value = "/add-order", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> addOrder(
+            @RequestBody Map<String, Object> request,
+            HttpServletRequest httpRequest) {
+        // Kiểm tra token
+        ResponseEntity<?> tokenCheck = checkToken(httpRequest);
+        if (tokenCheck != null) {
+            return tokenCheck;
+        }
+
+        // Lấy gmail từ token
+        String authHeader = httpRequest.getHeader("Authorization");
+        String token = authHeader.substring(7);
+        Claims claims = getClaimsFromToken(token);
+        String gmail = claims.getSubject();
+
+        try {
+            // Tìm account bằng gmail
+            Account account = account_service.findByGmail(gmail);
+            if (account == null) {
+                return ResponseEntity.status(404).body(Map.of(
+                    "message", "Không tìm thấy tài khoản với Gmail: " + gmail
+                ));
+            }
+
+            // Lấy dữ liệu OrderRequest từ request
+            Map<String, Object> orderData = (Map<String, Object>) request.get("order");
+            if (orderData == null) {
+                return ResponseEntity.status(400).body(Map.of(
+                    "message", "Dữ liệu đơn hàng không được để trống"
+                ));
+            }
+
+            // Ánh xạ OrderRequest từ dữ liệu nhận được
+            orderrequest orderRequest = new orderrequest();
+            orderRequest.setHoTen(orderData.get("hoTen") != null ? orderData.get("hoTen").toString() : "");
+            orderRequest.setSdt(orderData.get("sdt") != null ? orderData.get("sdt").toString() : "");
+            orderRequest.setDiachigiaohang(orderData.get("diachigiaohang") != null ? orderData.get("diachigiaohang").toString() : "");
+            orderRequest.setPhuongthucthanhtoan(Boolean.parseBoolean(orderData.get("phuongthucthanhtoan") != null ? orderData.get("phuongthucthanhtoan").toString() : "false"));
+            orderRequest.setTongtien(Double.parseDouble(orderData.get("tongtien") != null ? orderData.get("tongtien").toString() : "0.0"));
+            // DiscountId có thể null
+            if (orderData.get("idDiscount") != null) {
+                orderRequest.setIdDiscount(Long.valueOf(orderData.get("idDiscount").toString()));
+            }
+
+            // Tạo và lưu Order
+            Order order = new Order();
+            order.setIdAccount(account.getId()); // Lấy idAccount từ account
+            order.setIdDiscount(orderRequest.getIdDiscount());
+            order.setHoTen(orderRequest.getHoTen());
+            order.setSdt(orderRequest.getSdt());
+            order.setDiachigiaohang(orderRequest.getDiachigiaohang());
+            order.setPhuongthucthanhtoan(orderRequest.isPhuongthucthanhtoan());
+            order.setTongtien(orderRequest.getTongtien());
+
+            Order savedOrder = sanPhamService.addorrder(order);
+            if (savedOrder == null) {
+                return ResponseEntity.status(500).body(Map.of(
+                    "message", "Không thể tạo đơn hàng"
+                ));
+            }
+
+            // Lấy danh sách OrderDetail từ request
+            List<Map<String, Object>> orderDetailsData = (List<Map<String, Object>>) request.get("orderDetails");
+            if (orderDetailsData == null || orderDetailsData.isEmpty()) {
+                return ResponseEntity.ok(Map.of(
+                    "message", "Đơn hàng đã được tạo, nhưng không có chi tiết đơn hàng để thêm",
+                    "orderId", savedOrder.getId()
+                ));
+            }
+
+            // Thêm các OrderDetail
+            List<OrderDetail> savedOrderDetails = new java.util.ArrayList<>();
+            for (Map<String, Object> detailData : orderDetailsData) {
+                OrderDetailRequest detailRequest = new OrderDetailRequest();
+                detailRequest.setIdOrder(savedOrder.getId());
+                detailRequest.setIdSanpham(Long.valueOf(detailData.get("idSanpham").toString()));
+                detailRequest.setSoluong(Integer.parseInt(detailData.get("soluong").toString()));
+                detailRequest.setGiatien(Double.parseDouble(detailData.get("giatien").toString()));
+                detailRequest.setTongtiensanpham(Double.parseDouble(detailData.get("tongtiensanpham").toString()));
+
+                // Tạo và lưu OrderDetail
+                OrderDetail orderDetail = new OrderDetail();
+                orderDetail.setIdOrder(detailRequest.getIdOrder());
+                orderDetail.setIdSanpham(detailRequest.getIdSanpham());
+                orderDetail.setSoluong(detailRequest.getSoluong());
+                orderDetail.setGiatien(detailRequest.getGiatien());
+                orderDetail.setTongtiensanpham(detailRequest.getTongtiensanpham());
+
+                OrderDetail savedDetail = sanPhamService.addorderdetail(orderDetail); // Gọi phương thức addOrderDetail từ SanPhamService
+                if (savedDetail == null) {
+                    return ResponseEntity.status(500).body(Map.of(
+                        "message", "Không thể thêm chi tiết đơn hàng cho sản phẩm ID: " + detailRequest.getIdSanpham()
+                    ));
+                }
+                savedOrderDetails.add(savedDetail);
+            }
+
+            // Trả về phản hồi thành công
+            return ResponseEntity.ok(Map.of(
+                "message", "Đơn hàng và chi tiết đơn hàng đã được tạo thành công",
+                "orderId", savedOrder.getId(),
+                "orderDetailsCount", savedOrderDetails.size()
+            ));
+
+        } catch (Exception e) {
+            logger.error("Lỗi khi tạo đơn hàng: {}", e.getMessage());
+            return ResponseEntity.status(500).body(Map.of(
+                "message", "Lỗi khi tạo đơn hàng: " + e.getMessage()
+            ));
         }
     }
 }

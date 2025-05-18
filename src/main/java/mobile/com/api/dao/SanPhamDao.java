@@ -1,12 +1,18 @@
 package mobile.com.api.dao;
 
+import mobile.com.api.DTO.orderrequest;
+import mobile.com.api.entity.Discount;
 import mobile.com.api.entity.GioHang;
 import mobile.com.api.entity.LoaiSanPham;
+import mobile.com.api.entity.OrderDetail;
 import mobile.com.api.entity.SanPham;
+import mobile.com.api.entity.YeuThich;
 
 import java.awt.print.Pageable;
 import java.util.List;
 import java.util.Map;
+
+import mobile.com.api.entity.Order;
 
 public interface SanPhamDao {
 
@@ -29,4 +35,11 @@ public interface SanPhamDao {
 
     LoaiSanPham findLoaiSanPhamById(Long id); // Tìm loại sản phẩm theo id
     List<LoaiSanPham> findAllLoaiSanPham(); // Lấy danh sách tất cả loại sản phẩm
+    YeuThich addThich(YeuThich yeuThich);
+    YeuThich findyeuthuichByAccountAndSanPham(Long accountId, Long sanPhamId);
+    List<YeuThich> getyeuthichByAccount(Long accountId);
+    void deleteyeuthich(long yeuthichid);
+    Discount addDiscount(Discount discount);
+    Order addorrder(mobile.com.api.entity.Order order);
+    OrderDetail addorderdetail(OrderDetail oderdetail);
 }

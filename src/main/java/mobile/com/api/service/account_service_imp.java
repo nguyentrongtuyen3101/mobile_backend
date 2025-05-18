@@ -92,4 +92,16 @@ public class account_service_imp implements account_service {
    {
 	   accountDao.updateProfilePicture(gmail, duongDanAnh);
    }
+   @Override
+   public void senddiscount(String email,String discount)
+   {
+	   
+       SimpleMailMessage message = new SimpleMailMessage();
+       message.setTo(email);
+       message.setSubject("mã discount");
+       message.setText("chúc mừng bro đã nhận dc discount mua hàng giảm giá nhiều v ò: " + discount);
+       message.setFrom("tinhluc2@gmail.com"); // Thay bằng email của bạn
+
+       mailSender.send(message);
+   }
 }

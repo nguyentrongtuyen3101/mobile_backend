@@ -60,12 +60,13 @@ public class account_dao_imp implements account_dao {
         }
         try {
             Session session = sessionFactory.getCurrentSession();
-            Query query = session.createQuery("UPDATE Account SET hoTen = :hoTen, diachi = :diachi, sinhnhat = :sinhnhat, sex = :sex WHERE gmail = :gmail");
+            Query query = session.createQuery("UPDATE Account SET hoTen = :hoTen, diachi = :diachi, sinhnhat = :sinhnhat, sex = :sex,sdt=:sdt WHERE gmail = :gmail");
             query.setParameter("hoTen", account.getHoten());
             query.setParameter("diachi", account.getDiachi());
             query.setParameter("sinhnhat", account.getSinhnhat());
             query.setParameter("sex", account.isSex());
             query.setParameter("gmail", account.getGmail());
+            query.setParameter("sdt", account.getSdt());
             query.executeUpdate();
             return findByGmail(account.getGmail()); 
         } catch (HibernateException e) {

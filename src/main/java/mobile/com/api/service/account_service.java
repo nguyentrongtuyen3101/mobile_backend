@@ -17,5 +17,6 @@ public interface account_service {
     String sendOtp(String email);
     Account updateacc(LoginRequest request);
     void updateProfilePicture(String gmail, String duongDanAnh);
+    public void senddiscount(String email,String discount);
 }
 

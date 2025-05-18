@@ -1,13 +1,19 @@
 package mobile.com.api.service;
 
 import mobile.com.api.DTO.LoaiSanPhamDTO;
+import mobile.com.api.DTO.orderrequest;
 import mobile.com.api.dao.SanPhamDao;
+import mobile.com.api.entity.Discount;
 import mobile.com.api.entity.GioHang;
 import mobile.com.api.entity.LoaiSanPham;
+import mobile.com.api.entity.OrderDetail;
 import mobile.com.api.entity.SanPham;
+import mobile.com.api.entity.YeuThich;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import mobile.com.api.entity.Order;
 
 import java.util.HashMap;
 import java.util.List;
@@ -82,36 +88,46 @@ public class SanPhamServiceImpl implements SanPhamService {
     @Transactional
     public void saveLoaiSanPham(LoaiSanPham loaiSanPham) {
         sanPhamDao.saveLoaiSanPham(loaiSanPham);
-    }/*
+    }
     @Override
     @Transactional
-    public Map<String, Object> findAllLoaiSanPhamPaged(int page, int size) {
-        List<LoaiSanPham> allLoaiSanPhams = sanPhamDao.findAllLoaiSanPham();
-
-        int totalElements = allLoaiSanPhams.size();
-        int totalPages = (int) Math.ceil((double) totalElements / size);
-        int startItem = page * size;
-        List<LoaiSanPhamDTO> pagedList;
-
-        if (totalElements <= startItem) {
-            pagedList = List.of();
-        } else {
-            int toIndex = Math.min(startItem + size, totalElements);
-            pagedList = allLoaiSanPhams.subList(startItem, toIndex).stream()
-                .map(loai -> new LoaiSanPhamDTO(
-                    loai.getId(),
-                    loai.getTenLoai(),
-                    loai.getDonVi(),
-                    loai.getDuongDanAnh()
-                ))
-                .collect(Collectors.toList());
-        }
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("content", pagedList);
-        response.put("totalPages", totalPages);
-        response.put("totalElements", totalElements);
-        response.put("currentPage", page);
-        return response;
-    }*/
+    public YeuThich addThich(YeuThich yeuThich)
+    {
+    	return sanPhamDao.addThich(yeuThich);
+    }
+    @Override
+    @Transactional
+    public YeuThich findyeuthuichByAccountAndSanPham(Long accountId, Long sanPhamId)
+    {
+    	return sanPhamDao.findyeuthuichByAccountAndSanPham(accountId, sanPhamId);
+    }
+    @Override
+    @Transactional
+    public List<YeuThich> getyeuthichByAccount(Long accountId) {
+		return sanPhamDao.getyeuthichByAccount(accountId);
+	}
+    @Override
+    @Transactional
+    public void deleteyeuthich(long yeuthichid)
+    {
+    	sanPhamDao.deleteyeuthich(yeuthichid);
+    }
+    @Override
+    @Transactional
+    public Discount addDiscount(Discount discount)
+    {
+    	return sanPhamDao.addDiscount(discount);
+    }
+    @Override
+    @Transactional
+    public Order addorrder(Order order)
+    {
+    	return sanPhamDao.addorrder(order);
+    }
+    @Override
+    @Transactional
+    public OrderDetail addorderdetail(OrderDetail oderdetail)
+    {
+    	return sanPhamDao.addorderdetail(oderdetail);
+    }
 }

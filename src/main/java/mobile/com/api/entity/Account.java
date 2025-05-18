@@ -31,7 +31,7 @@ public class Account {
     private Date sinhnhat;
     @Column(columnDefinition = "BOOLEAN DEFAULT TRUE")
     private boolean sex=true;
-
+    private String sdt;
     /**
 	 * @return the duongDanAnh
 	 */
@@ -126,7 +126,21 @@ public class Account {
         this.id = id;
     }
 
-    public String getHoTen() {
+    /**
+	 * @return the sdt
+	 */
+	public String getSdt() {
+		return sdt;
+	}
+
+	/**
+	 * @param sdt the sdt to set
+	 */
+	public void setSdt(String sdt) {
+		this.sdt = sdt;
+	}
+
+	public String getHoTen() {
         return this.hoTen;
     }
 

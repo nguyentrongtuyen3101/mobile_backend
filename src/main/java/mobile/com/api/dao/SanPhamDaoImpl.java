@@ -1,15 +1,21 @@
 package mobile.com.api.dao;
 
+import mobile.com.api.DTO.orderrequest;
 import mobile.com.api.entity.Account;
+import mobile.com.api.entity.Discount;
 import mobile.com.api.entity.GioHang;
 import mobile.com.api.entity.LoaiSanPham;
+import mobile.com.api.entity.OrderDetail;
 import mobile.com.api.entity.SanPham;
+import mobile.com.api.entity.YeuThich;
+
+import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.query.Query;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
-
+import mobile.com.api.entity.Order;
 import java.util.List;
 
 @Repository
@@ -97,7 +103,42 @@ public class SanPhamDaoImpl implements SanPhamDao {
             session.delete(gioHang);
         }
     }
-
+    @Override
+    public YeuThich addThich(YeuThich yeuThich) {
+    	Session session = sessionFactory.getCurrentSession();
+        session.saveOrUpdate(yeuThich);
+        return yeuThich;
+    }
+    @Override
+    public YeuThich findyeuthuichByAccountAndSanPham(Long accountId, Long sanPhamId)
+    {
+    	 Session session = sessionFactory.getCurrentSession();
+         Query<YeuThich> query = session.createQuery(
+             "FROM YeuThich WHERE account.id = :accountId AND sanPham.id = :sanPhamId", YeuThich.class
+         );
+         query.setParameter("accountId", accountId);
+         query.setParameter("sanPhamId", sanPhamId);
+         return query.uniqueResult();
+    }
+    @Override
+    public List<YeuThich> getyeuthichByAccount(Long accountId)
+    {
+    	Session session = sessionFactory.getCurrentSession();
+        Query<YeuThich> query = session.createQuery(
+            "FROM YeuThich WHERE account.id = :accountId", YeuThich.class
+        );
+        query.setParameter("accountId", accountId);
+        return query.getResultList();
+    }
+    @Override
+    public  void deleteyeuthich(long yeuthichid)
+    {
+    	 Session session = sessionFactory.getCurrentSession();
+         YeuThich yeuThich = session.get(YeuThich.class, yeuthichid);
+         if (yeuThich != null) {
+             session.delete(yeuThich);
+         }
+    }
     @Override
     public LoaiSanPham findLoaiSanPhamById(Long id) {
         try {
@@ -118,6 +159,27 @@ public class SanPhamDaoImpl implements SanPhamDao {
             "FROM LoaiSanPham", LoaiSanPham.class
         );
         return query.getResultList();
+    }
+    @Override
+    public Discount addDiscount(Discount discount)
+    {
+    	 Session session = sessionFactory.getCurrentSession();
+         session.saveOrUpdate(discount);
+         return discount;
+    }
+    @Override
+    public Order addorrder(Order order)
+    {
+    	 Session session = sessionFactory.getCurrentSession();
+         session.saveOrUpdate(order);
+         return order;
+    }
+    @Override
+    public OrderDetail addorderdetail(OrderDetail oderdetail)
+    {
+    	 Session session = sessionFactory.getCurrentSession();
+         session.saveOrUpdate(oderdetail);
+         return oderdetail;
     }
     
 }

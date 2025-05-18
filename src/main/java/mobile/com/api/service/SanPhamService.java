@@ -1,8 +1,11 @@
 package mobile.com.api.service;
-
+import mobile.com.api.entity.Discount;
 import mobile.com.api.entity.GioHang;
 import mobile.com.api.entity.LoaiSanPham;
+import mobile.com.api.entity.OrderDetail;
 import mobile.com.api.entity.SanPham;
+import mobile.com.api.entity.YeuThich;
+import mobile.com.api.entity.Order;
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +30,13 @@ public interface SanPhamService {
 
     LoaiSanPham findLoaiSanPhamById(Long id); // Tìm loại sản phẩm theo id
     List<LoaiSanPham> findAllLoaiSanPham(); // Lấy danh sách tất cả loại sản phẩm
-   // Map<String, Object> findAllLoaiSanPhamPaged(int page, int size);
+    YeuThich addThich(YeuThich yeuThich);
+    YeuThich findyeuthuichByAccountAndSanPham(Long accountId, Long sanPhamId);
+    List<YeuThich> getyeuthichByAccount(Long accountId);
+    void deleteyeuthich(long yeuthichid);
+    Order addorrder(Order order);
+    OrderDetail addorderdetail(OrderDetail oderdetail);
+    
+    Discount addDiscount(Discount discount);
     
 }

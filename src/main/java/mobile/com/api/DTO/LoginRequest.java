@@ -12,6 +12,7 @@ public class LoginRequest {
     private Date sinhnhat;
     private boolean sex;
     private String duongDanAnh;
+    private String sdt;
     
     /**
 	 * @return the duongDanAnh
@@ -106,7 +107,23 @@ public class LoginRequest {
         return matKhau;
     }
 
-    public void setMatKhau(String matKhau) {
+    /**
+	 * @return the sdt
+	 */
+	public String getSdt() {
+		return sdt;
+	}
+
+
+	/**
+	 * @param sdt the sdt to set
+	 */
+	public void setSdt(String sdt) {
+		this.sdt = sdt;
+	}
+
+
+	public void setMatKhau(String matKhau) {
         this.matKhau = matKhau;
     }
 }

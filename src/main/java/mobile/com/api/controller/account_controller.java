@@ -2,7 +2,10 @@ package mobile.com.api.controller;
 
 import mobile.com.api.DTO.LoginRequest;
 import mobile.com.api.DTO.SignupRequest;
+import mobile.com.api.DTO.discountrequest;
 import mobile.com.api.entity.Account;
+import mobile.com.api.entity.Discount;
+import mobile.com.api.service.SanPhamService;
 import mobile.com.api.service.account_service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +40,8 @@ public class account_controller {
 
     @Autowired
     private ServletContext servletContext;
+    @Autowired
+    private SanPhamService sanPhamService;
 
     // Khai báo jwtSecret trực tiếp trong controller
     private static final String jwtSecret = "TXlTdXBlclNlY3JldEtleTEyMyFAI015U3VwZXJTZWNyZXRLZXkxMjMhQCNNeVN1cGVyU2VjcmV0S2V5MTIzIUAjTXlTdXBlclNlY3JldEtleTEyMyFAIw==";
@@ -83,6 +88,7 @@ public class account_controller {
                 .claim("hoten", account.getHoTen())
                 .claim("diachi", account.getDiachi())
                 .claim("gioitinh", account.isSex())
+                .claim("sdt", account.getSdt())
                 .claim("sinhnhat", sinhnhatStr)
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
@@ -246,6 +252,7 @@ public class account_controller {
                 "hoten", existingAccount.getHoTen(),
                 "gioitinh", existingAccount.isSex(),
                 "sinhnhat", sinhnhatStr,
+                "sdt",existingAccount.getSdt(),
                 "diachi", existingAccount.getDiachi(),
                 "message", "Cập nhật thông tin tài khoản thành công"
             ));
@@ -343,6 +350,45 @@ public class account_controller {
             logger.error("Lỗi khi upload ảnh đại diện cho: {}", gmail, e);
             return ResponseEntity.status(500).body(Map.of(
                 "message", "Lỗi khi upload ảnh: " + e.getMessage()
+            ));
+        }
+    }
+    @PostMapping(value = "/taodiscount", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> addDiscount(@RequestBody discountrequest request, @RequestParam("gmail") String gmail) {
+        try {
+            // Tìm account bằng gmail
+            Account existingAccount = accountService.findByGmail(gmail);
+            if (existingAccount == null) {
+                return ResponseEntity.status(404).body(Map.of(
+                    "message", "Không tìm thấy tài khoản với Gmail: " + gmail
+                ));
+            }
+
+            // Lấy idAccount từ existingAccount
+            Long idAccount = existingAccount.getId();
+
+            // Tạo và lưu Discount
+            Discount newDiscount = new Discount();
+            newDiscount.setIdAccount(idAccount);
+            newDiscount.setMaKhuyenMai(request.getMaKhuyenMai());
+            newDiscount.setGiaTien(request.getGiaTien());
+            newDiscount = sanPhamService.addDiscount(newDiscount);
+
+            // Gửi mã giảm giá tới email
+            String message =  newDiscount.getMaKhuyenMai();
+            accountService.senddiscount(gmail, message); 
+
+            return ResponseEntity.ok(Map.of(
+                "id", newDiscount.getId(),
+                "idAccount", newDiscount.getIdAccount(),
+                "maKhuyenMai", newDiscount.getMaKhuyenMai(),
+                "gia tien",newDiscount.getGiaTien(),
+                "message", "Tạo mã giảm giá thành công và đã gửi mã tới email"
+            ));
+        } catch (RuntimeException e) {
+            logger.error("Lỗi khi tạo mã giảm giá: {}", e.getMessage());
+            return ResponseEntity.status(400).body(Map.of(
+                "message", "Lỗi khi tạo mã giảm giá: " + e.getMessage()
             ));
         }
     }
