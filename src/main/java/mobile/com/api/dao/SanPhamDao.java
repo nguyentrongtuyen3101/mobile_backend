@@ -1,6 +1,10 @@
 package mobile.com.api.dao;
 
+import mobile.com.api.DTO.LoginRequest;
+import mobile.com.api.DTO.OrderDetailResponseDTO;
+import mobile.com.api.DTO.OrderResponseDTO;
 import mobile.com.api.DTO.orderrequest;
+import mobile.com.api.entity.Account;
 import mobile.com.api.entity.Discount;
 import mobile.com.api.entity.GioHang;
 import mobile.com.api.entity.LoaiSanPham;
@@ -42,4 +46,10 @@ public interface SanPhamDao {
     Discount addDiscount(Discount discount);
     Order addorrder(mobile.com.api.entity.Order order);
     OrderDetail addorderdetail(OrderDetail oderdetail);
+    public List<OrderResponseDTO> getdonhangByAccount(Long accountId);
+    public List<OrderDetailResponseDTO> getchitietdonhangByAccount(Long orderId);
+    public void updateOrderStatus(Long orderId, int status);
+ // Thêm hai phương thức mới
+    Integer getAvailableQuantity(Long idSanPham);
+    void updateProductQuantity(Long idSanPham, Integer newQuantity);
 }

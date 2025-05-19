@@ -1,28 +1,51 @@
 package mobile.com.api.DTO;
 
-public class orderrequest {
-    private Long idDiscount; // Có thể null, ánh xạ từ idDiscount trong Order
-    private String hoTen; // Ánh xạ từ hoTen trong Order
-    private String sdt; // Ánh xạ từ sdt trong Order
-    private String diachigiaohang; // Ánh xạ từ diachigiaohang trong Order
-    private boolean phuongthucthanhtoan; // Ánh xạ từ phuongthucthanhtoan trong Order
-    private double tongtien; // Ánh xạ từ tongtien trong Order
-    
+public class OrderResponseDTO {
+    private Long id; // ID của đơn hàng
+    private Long idAccount; // ID của tài khoản
+    private Long idDiscount; // ID giảm giá (có thể null)
+    private String hoTen; // Tên người nhận
+    private String sdt; // Số điện thoại
+    private String diachigiaohang; // Địa chỉ giao hàng
+    private boolean phuongthucthanhtoan; // Phương thức thanh toán (true/false)
+    private double tongtien; // Tổng tiền
+    private int status; // Trạng thái đơn hàng
+
     // Constructor mặc định
-    public orderrequest() {
+    public OrderResponseDTO() {
     }
 
     // Constructor với tham số
-    public orderrequest(Long idDiscount, String hoTen, String sdt, String diachigiaohang, boolean phuongthucthanhtoan, double tongtien) {
+    public OrderResponseDTO(Long id, Long idAccount, Long idDiscount, String hoTen, String sdt, String diachigiaohang,
+                           boolean phuongthucthanhtoan, double tongtien, int status) {
+        this.id = id;
+        this.idAccount = idAccount;
         this.idDiscount = idDiscount;
         this.hoTen = hoTen;
         this.sdt = sdt;
         this.diachigiaohang = diachigiaohang;
         this.phuongthucthanhtoan = phuongthucthanhtoan;
         this.tongtien = tongtien;
+        this.status = status;
     }
 
     // Getters và Setters
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Long getIdAccount() {
+        return idAccount;
+    }
+
+    public void setIdAccount(Long idAccount) {
+        this.idAccount = idAccount;
+    }
+
     public Long getIdDiscount() {
         return idDiscount;
     }
@@ -69,5 +92,13 @@ public class orderrequest {
 
     public void setTongtien(double tongtien) {
         this.tongtien = tongtien;
+    }
+
+    public int getStatus() {
+        return status;
+    }
+
+    public void setStatus(int status) {
+        this.status = status;
     }
 }

@@ -11,6 +11,7 @@ import mobile.com.api.DTO.LoginRequest;
 import mobile.com.api.DTO.SignupRequest;
 import mobile.com.api.dao.account_dao;
 import mobile.com.api.entity.Account;
+import mobile.com.api.entity.Discount;
 import mobile.com.api.entity.Account.Role;
 import mobile.com.api.entity.SanPham;
 
@@ -103,5 +104,10 @@ public class account_service_imp implements account_service {
        message.setFrom("tinhluc2@gmail.com"); // Thay bằng email của bạn
 
        mailSender.send(message);
+   }
+   @Override
+   public Discount timDiscount(long accountId,String discouncode)
+   {
+	   return accountDao.timDiscount(accountId, discouncode);
    }
 }

@@ -14,6 +14,7 @@ import org.springframework.stereotype.Repository;
 
 import mobile.com.api.DTO.LoginRequest;
 import mobile.com.api.entity.Account;
+import mobile.com.api.entity.Discount;
 import mobile.com.api.entity.SanPham;
 
 @Repository
@@ -32,7 +33,19 @@ public class account_dao_imp implements account_dao {
 			 return null;
 		}  
     }
-
+    @Override
+    public Discount timDiscount(long accountId,String discouncode)
+    {
+    	try {
+    		Session session = sessionFactory.getCurrentSession();
+            Query<Discount> query = session.createQuery("FROM Discount WHERE idAccount = :idAccount and maKhuyenMai=:maKhuyenMai", Discount.class);
+            query.setParameter("idAccount", accountId);
+            query.setParameter("maKhuyenMai", discouncode);
+            return query.uniqueResult();
+		} catch (Exception e) {
+			 return null;
+		}  
+    }
     @Override
     public void save(Account account) {
         Session session = sessionFactory.getCurrentSession();

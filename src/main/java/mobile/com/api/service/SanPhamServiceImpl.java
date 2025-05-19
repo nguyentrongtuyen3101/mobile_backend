@@ -1,6 +1,8 @@
 package mobile.com.api.service;
 
 import mobile.com.api.DTO.LoaiSanPhamDTO;
+import mobile.com.api.DTO.OrderDetailResponseDTO;
+import mobile.com.api.DTO.OrderResponseDTO;
 import mobile.com.api.DTO.orderrequest;
 import mobile.com.api.dao.SanPhamDao;
 import mobile.com.api.entity.Discount;
@@ -129,5 +131,36 @@ public class SanPhamServiceImpl implements SanPhamService {
     public OrderDetail addorderdetail(OrderDetail oderdetail)
     {
     	return sanPhamDao.addorderdetail(oderdetail);
+    }
+    @Override
+    @Transactional
+    public List<OrderResponseDTO> getdonhangByAccount(Long accountId){
+    	return sanPhamDao.getdonhangByAccount(accountId);
+    }
+    @Override
+    @Transactional
+    public List<OrderDetailResponseDTO> getchitietdonhangByAccount(Long orderId)
+    {
+    	return sanPhamDao.getchitietdonhangByAccount(orderId);
+    }
+    @Override
+    @Transactional
+    public void updateOrderStatus(Long orderId, int status)
+    {
+    	sanPhamDao.updateOrderStatus( orderId,status);
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public Integer getAvailableQuantity(Long idSanPham) {
+        return sanPhamDao.getAvailableQuantity(idSanPham);
+    }
+
+    @Override
+    @Transactional
+    public void updateProductQuantity(Long idSanPham, Integer newQuantity) {
+        if (newQuantity < 0) {
+            throw new IllegalArgumentException("Số lượng không thể nhỏ hơn 0");
+        }
+        sanPhamDao.updateProductQuantity(idSanPham, newQuantity);
     }
 }

@@ -1,5 +1,7 @@
 package mobile.com.api.dao;
 
+import mobile.com.api.DTO.OrderDetailResponseDTO;
+import mobile.com.api.DTO.OrderResponseDTO;
 import mobile.com.api.DTO.orderrequest;
 import mobile.com.api.entity.Account;
 import mobile.com.api.entity.Discount;
@@ -17,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 import mobile.com.api.entity.Order;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Repository
 public class SanPhamDaoImpl implements SanPhamDao {
@@ -54,7 +57,47 @@ public class SanPhamDaoImpl implements SanPhamDao {
         query.setParameter("idLoai", idLoai);
         return query.getResultList();
     }
+    @Override
+    public List<OrderResponseDTO> getdonhangByAccount(Long accountId) {
+        Session session = sessionFactory.getCurrentSession();
+        Query<Object[]> query = session.createQuery(
+            "SELECT o.id, o.idAccount, o.idDiscount, o.hoTen, o.sdt, o.diachigiaohang, o.phuongthucthanhtoan, o.tongtien, o.status " +
+            "FROM Order o WHERE o.idAccount = :idAccount ORDER BY o.id DESC", Object[].class
+        );
+        query.setParameter("idAccount", accountId);
+        List<Object[]> results = query.getResultList();
 
+        return results.stream().map(result -> new OrderResponseDTO(
+            (Long) result[0],      // id
+            (Long) result[1],      // idAccount
+            (Long) result[2],      // idDiscount
+            (String) result[3],    // hoTen
+            (String) result[4],    // sdt
+            (String) result[5],    // diachigiaohang
+            (Boolean) result[6],   // phuongthucthanhtoan
+            (Double) result[7],    // tongtien
+            (Integer) result[8]    // status
+        )).collect(Collectors.toList());
+    }
+    @Override
+    public List<OrderDetailResponseDTO> getchitietdonhangByAccount(Long orderId) {
+        Session session = sessionFactory.getCurrentSession();
+        Query<Object[]> query = session.createQuery(
+            "SELECT o.id, o.idOrder, o.idSanpham, o.soluong, o.giatien, o.tongtiensanpham " +
+            "FROM OrderDetail o WHERE o.idOrder = :idOrder ORDER BY o.id DESC", Object[].class
+        );
+        query.setParameter("idOrder", orderId);
+        List<Object[]> results = query.getResultList();
+
+        return results.stream().map(result -> new OrderDetailResponseDTO(
+            (Long) result[0],      // id
+            (Long) result[1],      // idOrder
+            (Long) result[2],      // idSanpham
+            (Integer) result[3],   // soluong
+            (Double) result[4],    // giatien
+            (Double) result[5]     // tongtiensanpham
+        )).collect(Collectors.toList());
+    }
     @Override
     public SanPham findByid(long id) {
         try {
@@ -181,5 +224,36 @@ public class SanPhamDaoImpl implements SanPhamDao {
          session.saveOrUpdate(oderdetail);
          return oderdetail;
     }
-    
+    @Override
+    public void updateOrderStatus(Long orderId, int status) {
+        Session session = sessionFactory.getCurrentSession();
+        Query query = session.createQuery("UPDATE Order SET status = :status WHERE id = :id");
+        query.setParameter("status", status);
+        query.setParameter("id", orderId);
+        query.executeUpdate();
+    }
+ // Thêm phương thức mới: Lấy số lượng hiện có của sản phẩm
+    @Override
+    public Integer getAvailableQuantity(Long idSanPham) {
+        Session session = sessionFactory.getCurrentSession();
+        Query<SanPham> query = session.createQuery(
+            "FROM SanPham WHERE id = :idSanPham", SanPham.class
+        );
+        query.setParameter("idSanPham", idSanPham);
+        SanPham sanPham = query.uniqueResult();
+        return sanPham != null ? sanPham.getSoLuong() : null;
+    }
+
+    // Thêm phương thức mới: Cập nhật số lượng sản phẩm
+    @Override
+    public void updateProductQuantity(Long idSanPham, Integer newQuantity) {
+        Session session = sessionFactory.getCurrentSession();
+        SanPham sanPham = session.get(SanPham.class, idSanPham);
+        if (sanPham != null) {
+            sanPham.setSoLuong(newQuantity);
+            session.saveOrUpdate(sanPham);
+        } else {
+            throw new RuntimeException("Không tìm thấy sản phẩm với ID: " + idSanPham);
+        }
+    }
 }

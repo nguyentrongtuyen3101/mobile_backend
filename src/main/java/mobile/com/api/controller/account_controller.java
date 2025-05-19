@@ -157,6 +157,7 @@ public class account_controller {
                 "id", newAccount.getId(),
                 "gmail", newAccount.getGmail(),
                 "hoten", newAccount.getHoTen(),
+                "sdt",newAccount.getSdt(),
                 "diachi", newAccount.getDiachi(),
                 "sinhnhat", sinhnhatStr,
                 "gioitinh", newAccount.isSex(),
@@ -389,6 +390,74 @@ public class account_controller {
             logger.error("Lỗi khi tạo mã giảm giá: {}", e.getMessage());
             return ResponseEntity.status(400).body(Map.of(
                 "message", "Lỗi khi tạo mã giảm giá: " + e.getMessage()
+            ));
+        }
+    }
+    @PostMapping(value = "/find-discount", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> findDiscount(
+            @RequestBody Map<String, String> request,
+            HttpServletRequest httpRequest) {
+        // Kiểm tra token
+        String authHeader = httpRequest.getHeader("Authorization");
+        logger.info("Authorization Header: {}", authHeader);
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body(Map.of(
+                "message", "Token không hợp lệ hoặc không tồn tại"
+            ));
+        }
+
+        String token = authHeader.substring(7);
+        logger.info("Token received: {}", token);
+        Claims claims = getClaimsFromToken(token);
+        if (claims == null) {
+            return ResponseEntity.status(401).body(Map.of(
+                "message", "Token không hợp lệ hoặc đã hết hạn"
+            ));
+        }
+
+        try {
+            // Lấy gmail từ token
+            String gmail = claims.getSubject();
+            // Tìm account bằng gmail
+            Account account = accountService.findByGmail(gmail);
+            if (account == null) {
+                return ResponseEntity.status(404).body(Map.of(
+                    "message", "Không tìm thấy tài khoản với Gmail: " + gmail
+                ));
+            }
+
+            // Lấy idAccount từ account
+            Long idAccount = account.getId();
+
+            // Lấy discountCode từ request
+            String discountCode = request.get("discountCode");
+            if (discountCode == null || discountCode.trim().isEmpty()) {
+                return ResponseEntity.status(400).body(Map.of(
+                    "message", "Mã giảm giá không được để trống"
+                ));
+            }
+
+            // Tìm Discount bằng idAccount và discountCode
+            Discount discount = accountService.timDiscount(idAccount, discountCode);
+            if (discount == null) {
+                return ResponseEntity.status(404).body(Map.of(
+                    "message", "Không tìm thấy mã giảm giá: " + discountCode + " cho tài khoản này"
+                ));
+            }
+
+            // Trả về thông tin Discount
+            return ResponseEntity.ok(Map.of(
+                "id", discount.getId(),
+                "idAccount", discount.getIdAccount(),
+                "maKhuyenMai", discount.getMaKhuyenMai(),
+                "giaTien", discount.getGiaTien(),
+                "message", "Tìm mã giảm giá thành công"
+            ));
+
+        } catch (Exception e) {
+            logger.error("Lỗi khi tìm mã giảm giá: {}", e.getMessage());
+            return ResponseEntity.status(500).body(Map.of(
+                "message", "Lỗi khi tìm mã giảm giá: " + e.getMessage()
             ));
         }
     }

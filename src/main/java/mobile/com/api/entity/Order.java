@@ -33,8 +33,24 @@ public class Order {
 
     @Column(name = "tong_tien", nullable = false)
     private double tongtien;
+    
+    @Column(name = "status", nullable = false,columnDefinition = "INT DEFAULT 1")
+    private int status=1;
+    /**
+	 * @return the status
+	 */
+	public int getStatus() {
+		return status;
+	}
 
-    // Mối quan hệ Many-to-One với Account
+	/**
+	 * @param status the status to set
+	 */
+	public void setStatus(int status) {
+		this.status = status;
+	}
+
+	// Mối quan hệ Many-to-One với Account
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_account", referencedColumnName = "id", insertable = false, updatable = false)
     private Account account;
@@ -207,7 +223,7 @@ public class Order {
 	}
 
 	// Constructor với tham số
-    public Order(Long idAccount, Long idDiscount, String hoTen, String sdt, String diachigiaohang, boolean phuongthucthanhtoan, double tongtien) {
+    public Order(Long idAccount, Long idDiscount, String hoTen, String sdt, String diachigiaohang, boolean phuongthucthanhtoan, double tongtien,int status) {
         this.idAccount = idAccount;
         this.idDiscount = idDiscount;
         this.hoTen = hoTen;
@@ -215,5 +231,7 @@ public class Order {
         this.diachigiaohang = diachigiaohang;
         this.phuongthucthanhtoan = phuongthucthanhtoan;
         this.tongtien = tongtien;
+        this.status=status;
+        this.status=1;
     }
 }

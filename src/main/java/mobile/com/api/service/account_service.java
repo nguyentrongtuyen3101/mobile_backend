@@ -6,6 +6,7 @@ import java.util.Optional;
 import mobile.com.api.DTO.LoginRequest;
 import mobile.com.api.DTO.SignupRequest;
 import mobile.com.api.entity.Account;
+import mobile.com.api.entity.Discount;
 import mobile.com.api.entity.SanPham;
 
 public interface account_service {
@@ -18,5 +19,6 @@ public interface account_service {
     Account updateacc(LoginRequest request);
     void updateProfilePicture(String gmail, String duongDanAnh);
     public void senddiscount(String email,String discount);
+    Discount timDiscount(long accountId,String discouncode);
 }
 

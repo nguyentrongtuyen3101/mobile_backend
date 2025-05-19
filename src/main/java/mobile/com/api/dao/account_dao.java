@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import mobile.com.api.DTO.LoginRequest;
 import mobile.com.api.entity.Account;
+import mobile.com.api.entity.Discount;
 import mobile.com.api.entity.SanPham;
 
 @Repository
@@ -18,4 +19,5 @@ public interface account_dao {
     boolean existsByGmail(String gmail);
     Account updateacc(LoginRequest account);
     void updateProfilePicture(String gmail, String duongDanAnh);
+    Discount timDiscount(long accountId,String discouncode);
 }
